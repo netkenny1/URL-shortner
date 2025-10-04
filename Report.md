@@ -1,191 +1,164 @@
-Title: ShortKenny URL Shortener
-Author: Kenny Tohme
+# ShortKenny URL Shortener
+Author: Kenny Tohme  
+Course: Software Development and DevOps  
 Date: 4 October 2025
 
 ## Abstract
-A compact URL shortener built with PHP and SQLite, designed to support a browser UI and a small REST style API. Core behavior: accept a long URL, create a short code, store it, and on requests to /{code} redirect to the original URL while incrementing a click counter. The codebase stays minimal and readable to make CI, containerization, and later DevOps work straightforward. This document covers the development approach and SDLC, requirements, architecture and data model, implementation details, testing, the minor challenges faced, and a practical plan to scale for DevOps.
+This project is a lightweight URL shortener built with PHP and SQLite. It was designed as a simple but complete application to show the full software development life cycle and prepare for DevOps work. Users submit a long URL, get a short link, and when that short link is opened the app redirects to the original URL and tracks how many times it was used. The goal was to build a working tool, follow a clear process, use version control properly, document it well, and keep the codebase ready for CI, containerization, and future scaling.
 
----
+## 1. Project Overview
+The app provides a small browser UI and a REST style API. Paste a long URL and receive a short code. Visiting that short path redirects to the original address and increments a click counter stored in SQLite. There is also an endpoint to list links with stats.
 
-## 1. What the app does
-The application provides a simple page to paste a long URL and receive a short link at the root of the site. Visiting that short path resolves the original URL from SQLite, increases a stored click count, and returns an HTTP 302 redirect. A small API exposes the same actions for HTTP clients. Data persists in a single SQLite file committed with the repository. Local run uses PHP’s built in server with a front controller.
-
-**Features implemented**
+Core features implemented:
 - Create short links from valid long URLs
 - Redirect from short code to original URL
 - Increment click count on each redirect
-- List stored links and counts via API or UI
-- Minimal browser UI that calls the API
+- List stored links with their statistics through the API or UI
+- Minimal front end that calls the same API
 
----
+## 2. Chosen SDLC Model and Approach
+Model: Iterative and incremental.
 
-## 2. SDLC model and rationale
-**Model:** Iterative and incremental.
+Reasoning: The scope is small and each feature can be built and tested in short cycles. The order was database and redirect, then API, then UI, then polish. Each iteration gave feedback and kept changes simple, which matches DevOps habits like frequent integration and small updates.
 
-**Why this fit:** Scope is small and the features are separable. Short cycles allowed getting a working base early, validating the redirect in a real browser, then layering the API and UI, followed by persistence and small polish items. This rhythm aligns with DevOps habits like frequent integration, fast checks, and small changes.
-
-**Phases completed up to development**
-- **Planning:** Set goal to ship a functional shortener that runs with one command, uses zero external services, and can act as a clean seed for a DevOps pipeline.
-- **Requirements:** Defined a tight set of functional features plus simple nonfunctional constraints around readability and setup.
-- **Design:** Chose a front controller plus two handlers (API and redirect), with SQLite behind a small helper library. One table schema for links.
-- **Development:** Implemented the DB helpers, API endpoints, redirect flow, and minimal UI in short iterations.
-
----
+Phases followed:
+- Planning: define purpose, features, and constraints like simple local run and no external services
+- Requirements: capture functional and non functional items
+- Design: map architecture, schema, and routing
+- Development: implement in small steps, verify each step before moving on
 
 ## 3. Requirements
+Functional:
+- Accept a long URL and generate a unique short code
+- Redirect from short code to original URL
+- Increment a stored click counter on each redirect
+- Provide an endpoint to list links with stats
 
-### Functional
-- Create a short link from a long URL
-- Redirect visitors from `/{code}` to the original URL
-- Increment and store a click counter for each redirect
-- Provide a way to list links with their counts
+Non functional:
+- Run locally with only PHP installed
+- Use persistent storage with SQLite
+- Keep code clean, readable, and modular
+- Include a minimal UI to exercise the API
 
-### Nonfunctional
-- Runs locally without extra services beyond PHP
-- Persistent storage with a simple SQL database
-- Clear repository layout and readable code
-- Minimal UI that exercises the same API used by clients
+## 4. Architecture and Design
+All requests enter through a single front controller. It decides if a request is for the UI, the API, or a redirect.
 
----
+Key components:
+- router.php handles routing and dispatch
+- api.php exposes endpoints for create and list
+- redirect.php resolves a short code, increments clicks, and issues a 302 redirect
+- lib.php contains database connection, schema setup, validation, code generation, and helpers
+- SQLite stores original_url, short_code, click_count, created_at, updated_at
 
-## 4. Architecture overview
+Database schema:
+- id integer primary key autoincrement
+- original_url text not null
+- short_code text not null unique
+- click_count integer not null default 0
+- created_at text not null default datetime('now')
+- updated_at text not null default datetime('now')
 
-**High level structure**
-- **router.php**: Front controller. Parses the request path and dispatches.
-- **api.php**: REST style endpoints for creating and listing links. Returns JSON and status codes.
-- **redirect.php**: Looks up the short code, increments clicks, issues a 302 redirect to the long URL.
-- **lib.php**: Database connection (PDO SQLite), table migration, validation, code generation, and CRUD style helpers.
-- **SQLite**: One table storing long_url, code, clicks, timestamps.
+Request flow:
+1) Client sends a request  
+2) router.php routes to API or redirect or UI  
+3) Handler calls lib.php for data access  
+4) SQLite persists and retrieves data
 
-**Data model**
-- **Table: links**
-  - id INTEGER PRIMARY KEY AUTOINCREMENT
-  - long_url TEXT NOT NULL
-  - code TEXT NOT NULL UNIQUE
-  - clicks INTEGER NOT NULL DEFAULT 0
-  - created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-- Index on `code` supports fast lookups during redirect.
+## 5. Implementation
+Database and helpers:
+- PDO SQLite connection with exceptions enabled
+- On first run, ensure links table exists
+- Validate URLs with PHP filters
+- Generate random alphanumeric codes and retry if a unique constraint fails
+- Helpers for create, fetch by code, increment clicks, list links
 
-**Flow summary**
-1. Browser or HTTP client sends a request.
-2. `router.php` routes either to the API or redirect handler.
-3. Handlers call `lib.php` for database operations.
-4. SQLite persists and retrieves link data.
+Routing:
+- Root path serves the UI
+- Paths under /api go to api.php
+- Any single segment not under /api is treated as a short code and handled by redirect.php
 
----
+API:
+- POST /api/links creates a new short link from a JSON body with original_url
+- GET /api/links returns recent links with id, original_url, short_code, click_count, created_at, updated_at
+- Optionally GET /api/links/{id} returns a single link record
+- Optionally DELETE /api/links/{id} deletes a link
 
-## 5. Implementation details
+Redirect handler:
+- Extract short code from path
+- Look up row by short_code
+- Increment click_count and update updated_at
+- Issue 302 Location to original_url
+- Return 404 if the code is unknown
 
-### Database and helpers (lib.php)
-- **Connection:** Single PDO connection to a local SQLite file with exceptions enabled.
-- **Migration:** On first run, ensures the `links` table and index exist.
-- **Validation:** Long URLs validated with PHP’s filter utilities to reject obvious bad input.
-- **Code generation:** Alphanumeric short code creator. Insert guarded by a UNIQUE constraint; on conflict, a new code is generated and retried.
-- **Helpers exposed:** create short link, fetch by code, increment clicks, list recent links.
+UI:
+- Plain HTML plus a small script that calls the API
+- Input for long URL, button to shorten, and a list of links with counts
 
-### Routing (router.php)
-- All requests enter through one script.
-- `/` serves the minimal UI.
-- `/api/...` goes to `api.php`.
-- Any single path segment not under `/api` is treated as a candidate short code and sent to `redirect.php`.
-
-### API (api.php)
-- **POST /api/shorten:** Accepts JSON with `url`, validates, stores, and returns `{ code, long_url, short_url }`.
-- **GET /api/links:** Returns recent links with `code`, `long_url`, `clicks`, and `created_at`.
-- Uses consistent JSON errors and appropriate HTTP status codes.
-
-### Redirect handler (redirect.php)
-- Extracts `{code}` from path.
-- Retrieves the row by code; if found, increments `clicks` and issues `302 Location: {long_url}`.
-- Returns 404 for unknown codes with a clear message.
-
-### User interface (index.php)
-- Plain HTML with a small script.
-- Input field for long URL, button to shorten, live result showing the generated short URL.
-- Fetches and displays recent links and counters.
-
-### Local run
-- Start server with:
-  - `php -S 127.0.0.1:8000 router.php`
-- Open browser at `http://127.0.0.1:8000`
-- Use the page or make API calls from any HTTP client.
-
----
+Running locally:
+1) Ensure PHP is installed  
+2) Start the server: php -S 127.0.0.1:8000 router.php  
+3) Open http://127.0.0.1:8000
 
 ## 6. Testing
+Manual checks:
+- Create a short link, open it, confirm redirect and click count changes
+- Use the API to create and list links and verify fields
 
-### Manual checks
-- **UI path:** Paste a valid URL, create a short link, click it, confirm redirect and increasing click count in the list.
-- **API path:** 
-  - `POST /api/shorten` with JSON body to receive code and short_url.
-  - `GET /api/links` to confirm the new record and current `clicks`.
+Negative tests:
+- Submit invalid URLs and confirm clean error responses
+- Request a non existent code and confirm a 404
 
-### Negative tests
-- Submit invalid strings as URLs to confirm the API rejects them with a clean error response.
-- Request an unknown short code and confirm a 404 response.
+Quick sanity:
+- Run php syntax checks across files
+- Apply the schema in an in memory SQLite instance to confirm SQL is valid
 
-### Quick code sanity
-- Run PHP syntax checks across `.php` files.
-- Apply the schema against an in memory SQLite database in a one line script to validate SQL.
+## 7. Challenges and Solutions
+Short code collisions:
+- Solved by a unique index on short_code and a retry on insert failure. Small and reliable.
 
----
+URL validation:
+- Use PHP filter validation to block bad inputs. Return clear JSON errors and show them in the UI.
 
-## 7. Challenges and how they were handled
+Routing without a framework:
+- A front controller with simple path checks kept the app small and easy to follow.
 
-**Short code collisions**
-Keeping the generator simple while avoiding duplicates was the goal. A UNIQUE constraint on `code` lets SQLite enforce uniqueness. On the rare collision, the insert fails and a new code is generated and tried again. Small, reliable, and no extra dependencies.
+Zero config persistence:
+- SQLite removed setup hassles and kept the project portable while still using SQL.
 
-**URL validation**
-Only real URLs should enter the database. PHP’s built in filter validation does the job. Invalid inputs return a clear JSON error from the API, and the UI surfaces that message without duplicating rules.
+Minimal UI:
+- A simple page with fetch requests was enough to demonstrate the API without adding build tools.
 
-**Routing without a framework**
-A full framework felt unnecessary for a teaching project. A single front controller with a couple of path checks keeps the redirect path fast and the API logic easy to follow.
+## 8. DevOps Scaling Plan
+Continuous integration:
+- Add a GitHub Actions workflow that runs php -l and a quick schema apply test
+- Later add small unit tests for validation and code generation
 
-**Zero config persistence**
-SQLite keeps local setup frictionless. No external services, no credentials, and SQL stays available for later migration to a larger database.
+Containerization:
+- Build a Docker image using php 8 apache
+- Enable rewrite so requests reach the front controller
+- Mount a volume for the SQLite file if persistence across restarts is needed
 
-**Tiny UI**
-Avoided build tools and heavy client frameworks. A plain page with `fetch` calls was enough to exercise the API and show results.
+Configuration and environments:
+- Use environment variables for the database DSN
+- Keep SQLite for local development and support Postgres for staging or production by switching the DSN in one place
 
----
+Observability:
+- Log redirect events with timestamp and code
+- Add a tiny stats endpoint or page to see clicks over time
 
-## 8. DevOps-oriented scaling plan
+Security and hygiene:
+- Rate limit POST /api/links when creating new links
+- Optional authentication for admin actions like custom aliases or delete
+- Add link expiry and soft delete for cleanup
 
-**Continuous Integration**
-- Add a GitHub Actions workflow that:
-  - Runs `php -l` on all PHP files.
-  - Executes a short PHP snippet that applies the schema to an in memory SQLite database.
-  - Later, include unit tests for helpers like URL validation and code generation.
+Performance:
+- Ensure indexes on short_code and created_at
+- Consider a read through cache for lookups if traffic grows
+- Migrate to Postgres when concurrency needs increase
 
-**Containerization**
-- Build an image from `php:8.x-apache`.
-- Copy the repo into the web root and enable rewrite so requests reach `router.php`.
-- For local persistence, mount a volume for the SQLite file.
-
-**Configuration and environments**
-- Introduce an environment variable for the database DSN.
-- Keep SQLite for local development.
-- Support Postgres for staging or production by switching the DSN in one place inside `lib.php`.
-
-**Observability**
-- Log redirect events with timestamp and code.
-- Expose a lightweight stats endpoint or page to visualize clicks over time.
-
-**Security and hygiene**
-- Add rate limiting on `POST /api/shorten`.
-- Optional admin area or token to allow custom aliases and protected operations.
-- Link expiry and soft delete for cleanup.
-
-**Performance**
-- Ensure indexes on `code` and `created_at` are present.
-- If traffic grows, consider a read-through cache for code lookups.
-- Moving from SQLite to Postgres removes the single-writer limitation.
-
-**Team workflow**
-- Protect the main branch with required CI checks.
-- Keep pull requests small and messages descriptive.
-
----
+Team workflow:
+- Protect main with required CI checks
+- Keep pull requests small with descriptive messages
 
 ## 9. Conclusion
-The URL shortener satisfies the assignment’s feature set with a small, clear architecture and a minimal UI. Storage is persistent, the API is simple to use, and local setup is frictionless. The codebase is intentionally straightforward so it can serve as a clean starting point for CI, containerization, and environment-based deployments. The few challenges that came up were handled with small, practical decisions that keep the project maintainable. From here, enhancements around CI, a container image, configuration, observability, and a few security features will take it smoothly into DevOps territory without complicating the core.
+The URL shortener meets the assignment goals with a small and clear design. It has a working UI and API, uses SQLite for persistence, and is easy to run. The iterative and incremental approach kept the work manageable and testable. The app is ready for DevOps practices like CI, containerization, and environment based deployments. From here it can grow with security, analytics, and scaling improvements without complicating the core.

@@ -45,3 +45,8 @@ This project was developed as part of the **DevOps Pipeline Preparation Assignme
 - **PHP** installed (8.0+ recommended). Check with:
   ```bash
   php -v
+
+## Architecture
+
+![Architecture Diagram](./architecture.png)
+
