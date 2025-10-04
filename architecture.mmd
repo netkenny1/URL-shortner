@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph Client
+    U[Browser UI]
+    C[curl or HTTP client]
+  end
+
+  subgraph App[PHP App]
+    R[router.php]
+    API[api.php]
+    RED[redirect.php]
+    LIB[lib.php]
+  end
+
+  DB[(SQLite links table)]
+
+  U -->|UI and API requests| R
+  C -->|REST requests| R
+  R --> API
+  R --> RED
+  API --> LIB
+  RED --> LIB
+  LIB <--> DB
