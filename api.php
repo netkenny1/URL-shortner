@@ -1,63 +1,106 @@
 <?php
 require __DIR__ . '/db/config.php';
 require __DIR__ . '/lib.php';
+require __DIR__ . '/src/autoload.php';
 
-$pdo = db();
-$method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$body = json_decode(file_get_contents('php://input'), true) ?? [];
+// Start metrics collection
+MetricsCollector::startRequest();
 
-if (preg_match('#^/api/links/?$#', $path)) {
-  if ($method === 'GET') {
-    $stmt = $pdo->query("SELECT id, original_url, short_code, click_count, created_at, updated_at FROM links ORDER BY id DESC LIMIT 50");
-    json_out($stmt->fetchAll());
-  }
-  if ($method === 'POST') {
-    $url = trim($body['original_url'] ?? '');
-    if (!preg_match('#^https?://#i', $url)) json_out(['error' => 'Invalid URL. Must start with http or https'], 400);
-
-    // unique short code
-    do {
-      $code = generate_code(6);
-      $check = $pdo->prepare("SELECT id FROM links WHERE short_code = ?");
-      $check->execute([$code]);
-      $exists = $check->fetch();
-    } while ($exists);
-
-    $stmt = $pdo->prepare("INSERT INTO links (original_url, short_code) VALUES (?, ?)");
-    $stmt->execute([$url, $code]);
-
-    $id = (int)$pdo->lastInsertId();
-    $row = $pdo->query("SELECT id, original_url, short_code, click_count, created_at, updated_at FROM links WHERE id = $id")->fetch();
-    json_out($row, 201);
-  }
+try {
+    $pdo = db();
+    $repository = new LinkRepository($pdo);
+    $service = new LinkService($repository);
+    
+    $method = $_SERVER['REQUEST_METHOD'];
+    $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    
+    $isError = false;
+    
+    // Health endpoint
+    if ($path === '/health') {
+        $healthChecker = new HealthChecker($pdo);
+        $health = $healthChecker->check();
+        $statusCode = $health['status'] === 'healthy' ? Constants::HTTP_OK : Constants::HTTP_INTERNAL_ERROR;
+        ResponseHelper::json($health, $statusCode);
+    }
+    
+    // Metrics endpoint
+    if ($path === '/metrics') {
+        header('Content-Type: text/plain');
+        echo MetricsCollector::getPrometheusMetrics();
+        exit;
+    }
+    
+    // API endpoints
+    if (preg_match('#^/api/links/?$#', $path)) {
+        if ($method === 'GET') {
+            $links = $service->getAllLinks();
+            ResponseHelper::json($links);
+        }
+        
+        if ($method === 'POST') {
+            try {
+                $url = trim($body['original_url'] ?? '');
+                $link = $service->createLink($url);
+                ResponseHelper::json($link, Constants::HTTP_CREATED);
+            } catch (InvalidArgumentException $e) {
+                $isError = true;
+                ResponseHelper::error($e->getMessage(), Constants::HTTP_BAD_REQUEST);
+            } catch (Exception $e) {
+                $isError = true;
+                ResponseHelper::error('Internal server error', Constants::HTTP_INTERNAL_ERROR);
+            }
+        }
+    }
+    
+    if (preg_match('#^/api/links/(\d+)$#', $path, $m)) {
+        $id = (int)$m[1];
+        
+        if ($method === 'GET') {
+            $link = $service->getLink($id);
+            if ($link) {
+                ResponseHelper::json($link);
+            } else {
+                $isError = true;
+                ResponseHelper::notFound();
+            }
+        }
+        
+        if ($method === 'PUT') {
+            try {
+                $url = trim($body['original_url'] ?? '');
+                $link = $service->updateLink($id, $url ?: null);
+                if ($link) {
+                    ResponseHelper::json($link);
+                } else {
+                    $isError = true;
+                    ResponseHelper::notFound();
+                }
+            } catch (InvalidArgumentException $e) {
+                $isError = true;
+                ResponseHelper::error($e->getMessage(), Constants::HTTP_BAD_REQUEST);
+            }
+        }
+        
+        if ($method === 'DELETE') {
+            $deleted = $service->deleteLink($id);
+            if ($deleted) {
+                ResponseHelper::json(['ok' => true]);
+            } else {
+                $isError = true;
+                ResponseHelper::notFound();
+            }
+        }
+    }
+    
+    $isError = true;
+    ResponseHelper::notFound('Route not found');
+    
+} catch (Exception $e) {
+    $isError = true;
+    error_log('API Error: ' . $e->getMessage());
+    ResponseHelper::error('Internal server error', Constants::HTTP_INTERNAL_ERROR);
+} finally {
+    MetricsCollector::endRequest($isError);
 }
-
-if (preg_match('#^/api/links/(\d+)$#', $path, $m)) {
-  $id = (int)$m[1];
-
-  if ($method === 'GET') {
-    $stmt = $pdo->prepare("SELECT id, original_url, short_code, click_count, created_at, updated_at FROM links WHERE id = ?");
-    $stmt->execute([$id]);
-    $row = $stmt->fetch();
-    $row ? json_out($row) : json_out(['error' => 'Not found'], 404);
-  }
-
-  if ($method === 'PUT') {
-    $url = trim($body['original_url'] ?? '');
-    if ($url && !preg_match('#^https?://#i', $url)) json_out(['error' => 'Invalid URL'], 400);
-    $stmt = $pdo->prepare("UPDATE links SET original_url = COALESCE(NULLIF(?, ''), original_url) WHERE id = ?");
-    $stmt->execute([$url, $id]);
-    $stmt = $pdo->prepare("SELECT id, original_url, short_code, click_count, created_at, updated_at FROM links WHERE id = ?");
-    $stmt->execute([$id]);
-    json_out($stmt->fetch() ?: ['error' => 'Not found'], $stmt->rowCount() ? 200 : 404);
-  }
-
-  if ($method === 'DELETE') {
-    $stmt = $pdo->prepare("DELETE FROM links WHERE id = ?");
-    $stmt->execute([$id]);
-    json_out(['ok' => true]);
-  }
-}
-
-json_out(['error' => 'Route not found'], 404);

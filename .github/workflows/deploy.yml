@@ -1,0 +1,77 @@
+name: CD Pipeline - Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Docker Hub (if needed)
+        if: env.DOCKER_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build Docker image
+        run: |
+          docker build -t shortkenny:${{ github.sha }} .
+          docker tag shortkenny:${{ github.sha }} shortkenny:latest
+      
+      - name: Save Docker image
+        run: |
+          docker save shortkenny:latest | gzip > shortkenny-image.tar.gz
+      
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: shortkenny-image.tar.gz
+          retention-days: 7
+      
+      - name: Push Docker image to registry (if configured)
+        if: env.DOCKER_USERNAME != ''
+        run: |
+          docker push shortkenny:${{ github.sha }}
+          docker push shortkenny:latest
+      
+      - name: Deploy to production using Docker
+        if: env.DEPLOY_ENABLED == 'true'
+        env:
+          DEPLOY_ENABLED: ${{ secrets.DEPLOY_ENABLED }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          echo "Deploying Docker container to production..."
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+          
+          # Deploy using Docker
+          scp -i ~/.ssh/deploy_key shortkenny-image.tar.gz $DEPLOY_USER@$DEPLOY_HOST:/tmp/
+          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST "
+            docker load < /tmp/shortkenny-image.tar.gz
+            docker stop shortkenny || true
+            docker rm shortkenny || true
+            docker run -d --name shortkenny \
+              -p 80:80 \
+              --restart unless-stopped \
+              -v /var/lib/shortkenny/data:/var/www/html/data \
+              shortkenny:latest
+            docker system prune -f
+          "
+

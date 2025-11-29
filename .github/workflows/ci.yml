@@ -1,0 +1,87 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Run Tests and Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite
+          coverage: xdebug
+      
+      - name: Install dependencies
+        run: |
+          if [ -f composer.json ]; then
+            composer install --prefer-dist --no-progress --no-interaction
+          fi
+      
+      - name: Run PHP syntax check
+        run: |
+          find . -name "*.php" -not -path "./vendor/*" -not -path "./tests/*" -exec php -l {} \;
+      
+      - name: Run tests with coverage
+        run: |
+          mkdir -p coverage
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
+      
+      - name: Check coverage threshold
+        run: |
+          if [ -f coverage/clover.xml ]; then
+            COVERAGE=$(php -r "
+              \$xml = simplexml_load_file('coverage/clover.xml');
+              \$metrics = \$xml->project->metrics;
+              \$statements = (int)\$metrics['statements'];
+              \$covered = (int)\$metrics['coveredstatements'];
+              if (\$statements > 0) {
+                \$coverage = (\$covered / \$statements) * 100;
+                echo number_format(\$coverage, 2);
+              } else {
+                echo '0';
+              }
+            ")
+            echo "Code coverage: ${COVERAGE}%"
+            COVERAGE_NUM=$(echo "$COVERAGE" | sed 's/\.//' | sed 's/^0*//')
+            if [ -z "$COVERAGE_NUM" ]; then
+              COVERAGE_NUM=0
+            fi
+            if [ "$COVERAGE_NUM" -lt 7000 ]; then
+              echo "Coverage is below 70% threshold!"
+              exit 1
+            fi
+          else
+            echo "Coverage file not found!"
+            exit 1
+          fi
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: coverage/
+          retention-days: 30
+      
+      - name: Build Docker image
+        run: |
+          docker build -t shortkenny:test .
+      
+      - name: Test Docker image
+        run: |
+          docker run -d --name test-container -p 8080:80 shortkenny:test
+          sleep 10
+          curl -f http://localhost:8080/health || exit 1
+          curl -f http://localhost:8080/metrics || exit 1
+          docker stop test-container
+          docker rm test-container

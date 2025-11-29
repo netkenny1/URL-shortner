@@ -1,3 +1,30 @@
-node_modules/
-*/node_modules/
-*/build/
+# Dependencies
+/vendor/
+composer.lock
+composer.phar
+
+# Database
+*.sqlite
+*.sqlite3
+/data/
+
+# Coverage reports
+/coverage/
+*.clover
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+*.tar.gz
