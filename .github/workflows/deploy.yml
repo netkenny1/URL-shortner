@@ -1,12 +1,12 @@
-name: CD Pipeline - Deploy
+name: CD Pipeline - Deploy to Azure
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  deploy:
-    name: Deploy Application
+  build-and-deploy:
+    name: Build and Deploy to Azure
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
@@ -17,61 +17,44 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      - name: Login to Docker Hub (if needed)
-        if: env.DOCKER_USERNAME != ''
-        uses: docker/login-action@v3
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: Build Docker image
-        run: |
-          docker build -t shortkenny:${{ github.sha }} .
-          docker tag shortkenny:${{ github.sha }} shortkenny:latest
-      
-      - name: Save Docker image
-        run: |
-          docker save shortkenny:latest | gzip > shortkenny-image.tar.gz
-      
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v3
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
         with:
-          name: docker-image
-          path: shortkenny-image.tar.gz
-          retention-days: 7
+          login-server: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
       
-      - name: Push Docker image to registry (if configured)
-        if: env.DOCKER_USERNAME != ''
+      - name: Build and push Docker image to ACR
         run: |
-          docker push shortkenny:${{ github.sha }}
-          docker push shortkenny:latest
-      
-      - name: Deploy to production using Docker
-        if: env.DEPLOY_ENABLED == 'true'
-        env:
-          DEPLOY_ENABLED: ${{ secrets.DEPLOY_ENABLED }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-        run: |
-          echo "Deploying Docker container to production..."
-          # Setup SSH
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+          IMAGE_TAG="${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/shortkenny:${{ github.sha }}"
+          IMAGE_LATEST="${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/shortkenny:latest"
           
-          # Deploy using Docker
-          scp -i ~/.ssh/deploy_key shortkenny-image.tar.gz $DEPLOY_USER@$DEPLOY_HOST:/tmp/
-          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST "
-            docker load < /tmp/shortkenny-image.tar.gz
-            docker stop shortkenny || true
-            docker rm shortkenny || true
-            docker run -d --name shortkenny \
-              -p 80:80 \
-              --restart unless-stopped \
-              -v /var/lib/shortkenny/data:/var/www/html/data \
-              shortkenny:latest
-            docker system prune -f
-          "
-
+          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+      
+      - name: Deploy to Azure Container Instances
+        uses: azure/aci-deploy@v1
+        with:
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          dns-name-label: ${{ secrets.AZURE_DNS_NAME_LABEL }}
+          image: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/shortkenny:${{ github.sha }}
+          registry-login-server: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
+          registry-username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+          name: shortkenny
+          location: ${{ secrets.AZURE_LOCATION }}
+          ports: 80
+          cpu: 1
+          memory: 1
+          environment-variables: 'DB_DSN=sqlite:/var/www/html/data/data.sqlite'
+      
+      - name: Get deployment URL
+        run: |
+          echo "Application deployed successfully!"
+          echo "URL: https://${{ secrets.AZURE_DNS_NAME_LABEL }}.${{ secrets.AZURE_LOCATION }}.azurecontainer.io"

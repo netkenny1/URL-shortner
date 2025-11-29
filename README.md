@@ -223,6 +223,22 @@ Available metrics:
 
 ---
 
+## 🚀 Deployment
+
+### Azure Deployment
+
+This application is configured for deployment to **Azure Container Instances** using Docker.
+
+**Quick Start:**
+1. See `AZURE_DEPLOYMENT_GUIDE.md` for complete setup instructions
+2. Configure Azure secrets in GitHub repository settings
+3. Push to `main` branch to trigger automatic deployment
+
+**Deployment URL Format:**
+```
+https://<dns-name-label>.<location>.azurecontainer.io
+```
+
 ## 🔄 CI/CD Pipeline
 
 ### Continuous Integration (CI)
@@ -243,21 +259,24 @@ The CI pipeline (`.github/workflows/ci.yml`) runs on every push and pull request
 The CD pipeline (`.github/workflows/deploy.yml`) runs only on pushes to `main` branch:
 
 1. **Checkout code**
-2. **Build Docker image**
-3. **Tag image with commit SHA**
-4. **Save and upload image artifact**
-5. **Deploy to production** (configurable via secrets)
+2. **Login to Azure**
+3. **Build Docker image**
+4. **Push image to Azure Container Registry (ACR)**
+5. **Deploy to Azure Container Instances (ACI)**
 
-### GitHub Secrets Configuration
+### Azure Configuration
 
-For deployment, configure these secrets in GitHub repository settings:
+For deployment to Azure, configure these secrets in GitHub repository settings:
 
-- `DOCKER_USERNAME` - Docker Hub username (optional)
-- `DOCKER_PASSWORD` - Docker Hub password (optional)
-- `DEPLOY_ENABLED` - Set to `true` to enable deployment
-- `DEPLOY_HOST` - Production server hostname
-- `DEPLOY_USER` - SSH user for deployment
-- `DEPLOY_KEY` - SSH private key for deployment
+- `AZURE_CREDENTIALS` - Service principal JSON (see AZURE_DEPLOYMENT_GUIDE.md)
+- `AZURE_RESOURCE_GROUP` - Azure resource group name
+- `AZURE_REGISTRY_LOGIN_SERVER` - ACR login server URL
+- `AZURE_REGISTRY_USERNAME` - ACR username
+- `AZURE_REGISTRY_PASSWORD` - ACR password
+- `AZURE_DNS_NAME_LABEL` - Unique DNS label for your container
+- `AZURE_LOCATION` - Azure region (e.g., `eastus`)
+
+**See `AZURE_DEPLOYMENT_GUIDE.md` for detailed setup instructions.**
 
 ---
 
