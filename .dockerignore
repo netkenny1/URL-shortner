@@ -1,6 +1,12 @@
 .git
 .github
-*.md
 *.pdf
 *.zip
 architecture.*
+coverage/
+vendor/
+composer.phar
+*.sqlite
+*.sqlite3
+.env
+.DS_Store
