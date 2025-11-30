@@ -66,13 +66,22 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          # PHPUnit 10: Just use the output format flags - they enable coverage automatically
-          # PCOV doesn't need mode setting like Xdebug
+          # PHPUnit 10: Use explicit whitelist to ensure files are included
+          # The coverage-clover flag should trigger coverage collection
           echo "Running PHPUnit with coverage enabled..."
           ./vendor/bin/phpunit \
             --coverage-clover=coverage/clover.xml \
             --coverage-html=coverage/html \
-            --coverage-text=coverage/coverage.txt
+            --coverage-text=coverage/coverage.txt \
+            --whitelist=src \
+            --whitelist=api.php \
+            --whitelist=redirect.php \
+            --whitelist=lib.php
+          
+          # Debug: Check what PHPUnit actually did
+          echo "PHPUnit exit code: $?"
+          echo "Files in coverage directory:"
+          ls -la coverage/ 2>&1 || echo "Coverage directory doesn't exist"
           
           echo "Checking if coverage files were generated..."
           ls -la coverage/ || echo "Coverage directory is empty"
