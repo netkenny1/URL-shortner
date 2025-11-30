@@ -562,11 +562,12 @@ This section provides evidence of the successful deployment to Google Cloud Run,
 https://shortkenny-644197836082.europe-west1.run.app
 ```
 
-**Access Information:**
-- The application is publicly accessible at the URL above
-- For professor access to Cloud Run console, logs, and metrics, see `PROFESSOR_ACCESS_GUIDE.md`
-- Project ID: `deep-ray-479811-a3`
-- Region: `europe-west1`
+```bash
+gcloud run services describe shortkenny \
+  --platform managed \
+  --region us-central1 \
+  --format 'value(status.url)'
+```
 
 ### 6.2 Cloud Run Dashboard Status
 
@@ -702,7 +703,7 @@ http_errors_total 0
 
 **Screenshot Required:** GitHub Actions Workflow Run
 
-Navigate to: https://github.com/YOUR_USERNAME/URL-shortner/actions
+Navigate to: https://github.com/netkenny1/URL-shortner/actions
 
 **What to Capture:**
 1. **Workflow Run List:**
