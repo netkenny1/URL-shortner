@@ -24,37 +24,61 @@ jobs:
         run: |
           composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Run unit tests
+      - name: Verify Xdebug is enabled
+        run: |
+          echo "Verifying Xdebug configuration..."
+          php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+          php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
+          XDEBUG_LOADED=$(php -r "echo extension_loaded('xdebug') ? 'YES' : 'NO';")
+          if [ "$XDEBUG_LOADED" != "YES" ]; then
+            echo "❌ Xdebug is not loaded!"
+            exit 1
+          fi
+          echo "✅ Xdebug is properly configured"
+
+      - name: Prepare coverage directory
+        run: |
+          mkdir -p coverage/html
+          chmod -R 777 coverage
+
+      - name: Run unit tests with coverage
         env:
           XDEBUG_MODE: coverage
         run: |
-          echo "Running tests before deployment..."
-          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml
+          echo "Running tests with coverage before deployment..."
+          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html
           if [ $? -ne 0 ]; then
             echo "❌ Tests failed! Deployment aborted."
             exit 1
           fi
           echo "✅ All tests passed!"
-
-      - name: Generate coverage report
-        env:
-          XDEBUG_MODE: coverage
-        run: |
-          echo "Generating coverage report..."
-          ./vendor/bin/phpunit --coverage-html coverage/html --coverage-clover coverage/clover.xml
-          echo "✅ Coverage report generated in coverage/html/"
+          
+          # Verify coverage file was created
+          if [ ! -f coverage/clover.xml ]; then
+            echo "❌ Coverage file was not generated!"
+            echo "Listing coverage directory:"
+            ls -la coverage/ || true
+            exit 1
+          fi
+          echo "✅ Coverage file generated successfully"
 
       - name: Check coverage threshold
         run: |
+          echo "Checking coverage threshold..."
+          
           if [ ! -f coverage/clover.xml ]; then
-            echo "⚠️ Coverage file not found"
+            echo "❌ Coverage file not found at coverage/clover.xml"
+            echo "Contents of coverage directory:"
+            ls -la coverage/ || echo "Coverage directory does not exist"
             exit 1
           fi
           
+          echo "Coverage file found, parsing..."
           php -r "
             \$xml = @simplexml_load_file('coverage/clover.xml');
             if (\$xml === false) { 
               echo '❌ Failed to parse coverage file\n';
+              echo 'File exists but cannot be parsed as XML\n';
               exit(1); 
             }
             \$metrics = \$xml->project->metrics;
@@ -63,13 +87,15 @@ jobs:
             if (\$statements > 0) {
               \$percent = (\$covered / \$statements) * 100;
               echo 'Code coverage: ' . number_format(\$percent, 2) . '%\n';
+              echo 'Statements: ' . \$statements . ', Covered: ' . \$covered . '\n';
               if (\$percent < 70) { 
                 echo '❌ Coverage ' . number_format(\$percent, 2) . '% is below 70% threshold! Deployment aborted.\n';
                 exit(1); 
               }
-              echo '✅ Coverage threshold met!\n';
+              echo '✅ Coverage threshold met! (' . number_format(\$percent, 2) . '% >= 70%)\n';
             } else { 
               echo '❌ No statements found in coverage file\n';
+              echo 'This might indicate a problem with coverage generation\n';
               exit(1); 
             }
           "
