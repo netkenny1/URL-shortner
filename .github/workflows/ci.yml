@@ -26,6 +26,9 @@ jobs:
         run: |
           if [ -f composer.json ]; then
             composer install --prefer-dist --no-progress --no-interaction
+          else
+            echo "composer.json not found!"
+            exit 1
           fi
       
       - name: Run PHP syntax check
@@ -35,36 +38,57 @@ jobs:
       - name: Run tests with coverage
         run: |
           mkdir -p coverage
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
+          if [ ! -f ./vendor/bin/phpunit ]; then
+            echo "PHPUnit not found! Installing..."
+            composer install --prefer-dist --no-progress --no-interaction
+          fi
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt || {
+            echo "Tests failed or coverage generation failed"
+            exit 1
+          }
       
       - name: Check coverage threshold
         run: |
-          if [ -f coverage/clover.xml ]; then
-            COVERAGE=$(php -r "
-              \$xml = simplexml_load_file('coverage/clover.xml');
-              \$metrics = \$xml->project->metrics;
-              \$statements = (int)\$metrics['statements'];
-              \$covered = (int)\$metrics['coveredstatements'];
-              if (\$statements > 0) {
-                \$coverage = (\$covered / \$statements) * 100;
-                echo number_format(\$coverage, 2);
-              } else {
-                echo '0';
-              }
-            ")
-            echo "Code coverage: ${COVERAGE}%"
-            COVERAGE_NUM=$(echo "$COVERAGE" | sed 's/\.//' | sed 's/^0*//')
-            if [ -z "$COVERAGE_NUM" ]; then
-              COVERAGE_NUM=0
-            fi
-            if [ "$COVERAGE_NUM" -lt 7000 ]; then
-              echo "Coverage is below 70% threshold!"
-              exit 1
-            fi
-          else
-            echo "Coverage file not found!"
+          if [ ! -f coverage/clover.xml ]; then
+            echo "ERROR: Coverage file not found at coverage/clover.xml"
+            echo "Listing coverage directory:"
+            ls -la coverage/ || echo "Coverage directory does not exist"
             exit 1
           fi
+          
+          COVERAGE=$(php -r "
+            \$xml = @simplexml_load_file('coverage/clover.xml');
+            if (\$xml === false) {
+              echo 'ERROR: Failed to parse clover.xml';
+              exit(1);
+            }
+            \$metrics = \$xml->project->metrics;
+            \$statements = (int)\$metrics['statements'];
+            \$covered = (int)\$metrics['coveredstatements'];
+            if (\$statements > 0) {
+              \$coverage = (\$covered / \$statements) * 100;
+              echo number_format(\$coverage, 2);
+            } else {
+              echo '0';
+            }
+          " 2>&1)
+          
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to calculate coverage"
+            echo "$COVERAGE"
+            exit 1
+          fi
+          
+          echo "Code coverage: ${COVERAGE}%"
+          COVERAGE_NUM=$(echo "$COVERAGE" | sed 's/\.//' | sed 's/^0*//')
+          if [ -z "$COVERAGE_NUM" ]; then
+            COVERAGE_NUM=0
+          fi
+          if [ "$COVERAGE_NUM" -lt 7000 ]; then
+            echo "ERROR: Coverage is ${COVERAGE}%, which is below 70% threshold!"
+            exit 1
+          fi
+          echo "✅ Coverage check passed: ${COVERAGE}%"
       
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
