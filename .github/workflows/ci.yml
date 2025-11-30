@@ -71,9 +71,9 @@ jobs:
           echo "Running tests with PCOV coverage..."
           php -r "echo 'PCOV loaded: ' . (extension_loaded('pcov') ? 'YES' : 'NO') . PHP_EOL;"
           
-          # Use --coverage-filter to explicitly specify what to cover
+          # PHPUnit 10 requires source files in phpunit.xml <source> element
+          # --coverage-filter was removed in PHPUnit 10
           ./vendor/bin/phpunit \
-            --coverage-filter src \
             --coverage-clover coverage/clover.xml \
             --coverage-text 2>&1 | tee phpunit-output.txt
           
@@ -91,9 +91,10 @@ jobs:
           
           if [ ! -f coverage/clover.xml ]; then
             echo "ERROR: Coverage file was not generated!"
-            echo "Checking if any coverage-related files exist:"
-            find . -name "*.xml" -path "*/coverage/*" 2>/dev/null || echo "No XML files in coverage"
-            find . -name "clover*" 2>/dev/null || echo "No clover files found"
+            echo "This usually means phpunit.xml <source> config is wrong"
+            echo ""
+            echo "Contents of phpunit.xml:"
+            cat phpunit.xml
             exit 1
           fi
           
