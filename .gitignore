@@ -12,6 +12,9 @@ composer.phar
 /coverage/
 *.clover
 
+# PHPUnit cache
+.phpunit.cache/
+
 # IDE
 .idea/
 .vscode/
