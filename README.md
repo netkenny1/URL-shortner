@@ -239,17 +239,14 @@ Available metrics:
 
 ### Google Cloud Platform Deployment
 
-This application is configured for deployment to **Google Cloud Run** using Docker.
+This application is deployed to **Google Cloud Run** using Docker.
 
-**Quick Start:**
-1. See `GCP_DEPLOYMENT_GUIDE.md` for complete setup instructions
-2. Configure GCP secrets in GitHub repository settings
-3. Push to `main` branch to trigger automatic deployment
+**Live Application:**
+- **URL:** https://shortkenny-644197836082.europe-west1.run.app
+- **Project ID:** `deep-ray-479811-a3`
+- **Region:** `europe-west1`
 
-**Deployment URL Format:**
-```
-https://shortkenny-xxxxx-uc.a.run.app
-```
+The application is automatically deployed via GitHub Actions when code is pushed to the `main` branch.
 
 ## 🔄 CI/CD Pipeline
 
@@ -278,13 +275,13 @@ The CD pipeline (`.github/workflows/deploy.yml`) runs only on pushes to `main` b
 
 ### Google Cloud Configuration
 
-For deployment to Google Cloud, configure these secrets in GitHub repository settings:
+The application is deployed to Google Cloud Run with the following configuration:
+- **Project ID:** `deep-ray-479811-a3`
+- **Region:** `europe-west1`
+- **Service Name:** `shortkenny`
+- **Platform:** Cloud Run (managed)
 
-- `GCP_SA_KEY` - Service account JSON key (see GCP_DEPLOYMENT_GUIDE.md)
-- `GCP_PROJECT_ID` - Your GCP project ID
-- `GCP_REGION` - GCP region (e.g., `us-central1`)
-
-**See `GCP_DEPLOYMENT_GUIDE.md` for detailed setup instructions.**
+For professor access to view Cloud Run console, logs, and metrics, see `PROFESSOR_ACCESS_GUIDE.md`.
 
 ---
 
@@ -452,10 +449,6 @@ IE University
 ---
 
 ## 📚 Additional Documentation
-
-- **REPORT.md** - Comprehensive assignment report covering all improvements
-- **GCP_DEPLOYMENT_GUIDE.md** - Step-by-step Google Cloud Platform deployment instructions
-- **PROFESSOR_ACCESS_GUIDE.md** - Instructions for granting professor access to Cloud Run console
 
 See `REPORT.md` for detailed information about:
 - Code improvements and refactoring
