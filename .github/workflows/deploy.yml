@@ -1,4 +1,4 @@
-name: CD Pipeline - Deploy to Azure
+name: CD Pipeline - Deploy to Google Cloud
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-deploy:
-    name: Build and Deploy to Azure
+    name: Build and Deploy to Google Cloud Run
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
@@ -14,47 +14,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Login to Azure
-        uses: azure/login@v1
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
       
-      - name: Login to Azure Container Registry
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
-          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
-          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
       
-      - name: Build and push Docker image to ACR
+      - name: Build Docker image
         run: |
-          IMAGE_TAG="${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/shortkenny:${{ github.sha }}"
-          IMAGE_LATEST="${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/shortkenny:latest"
-          
-          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
-          docker push $IMAGE_TAG
-          docker push $IMAGE_LATEST
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/shortkenny:${{ github.sha }} .
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/shortkenny:latest .
       
-      - name: Deploy to Azure Container Instances
-        uses: azure/aci-deploy@v1
-        with:
-          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          dns-name-label: ${{ secrets.AZURE_DNS_NAME_LABEL }}
-          image: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/shortkenny:${{ github.sha }}
-          registry-login-server: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
-          registry-username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
-          registry-password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
-          name: shortkenny
-          location: ${{ secrets.AZURE_LOCATION }}
-          ports: 80
-          cpu: 1
-          memory: 1
-          environment-variables: 'DB_DSN=sqlite:/var/www/html/data/data.sqlite'
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/shortkenny:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/shortkenny:latest
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy shortkenny \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/shortkenny:${{ github.sha }} \
+            --platform managed \
+            --region ${{ secrets.GCP_REGION }} \
+            --allow-unauthenticated \
+            --port 80 \
+            --memory 512Mi \
+            --cpu 1 \
+            --set-env-vars DB_DSN=sqlite:/var/www/html/data/data.sqlite \
+            --quiet
       
       - name: Get deployment URL
         run: |
+          SERVICE_URL=$(gcloud run services describe shortkenny --platform managed --region ${{ secrets.GCP_REGION }} --format 'value(status.url)')
           echo "Application deployed successfully!"
-          echo "URL: https://${{ secrets.AZURE_DNS_NAME_LABEL }}.${{ secrets.AZURE_LOCATION }}.azurecontainer.io"
+          echo "URL: $SERVICE_URL"

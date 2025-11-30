@@ -225,18 +225,18 @@ Available metrics:
 
 ## 🚀 Deployment
 
-### Azure Deployment
+### Google Cloud Platform Deployment
 
-This application is configured for deployment to **Azure Container Instances** using Docker.
+This application is configured for deployment to **Google Cloud Run** using Docker.
 
 **Quick Start:**
-1. See `AZURE_DEPLOYMENT_GUIDE.md` for complete setup instructions
-2. Configure Azure secrets in GitHub repository settings
+1. See `GCP_DEPLOYMENT_GUIDE.md` for complete setup instructions
+2. Configure GCP secrets in GitHub repository settings
 3. Push to `main` branch to trigger automatic deployment
 
 **Deployment URL Format:**
 ```
-https://<dns-name-label>.<location>.azurecontainer.io
+https://shortkenny-xxxxx-uc.a.run.app
 ```
 
 ## 🔄 CI/CD Pipeline
@@ -259,24 +259,20 @@ The CI pipeline (`.github/workflows/ci.yml`) runs on every push and pull request
 The CD pipeline (`.github/workflows/deploy.yml`) runs only on pushes to `main` branch:
 
 1. **Checkout code**
-2. **Login to Azure**
+2. **Set up Google Cloud SDK**
 3. **Build Docker image**
-4. **Push image to Azure Container Registry (ACR)**
-5. **Deploy to Azure Container Instances (ACI)**
+4. **Push image to Google Container Registry (GCR)**
+5. **Deploy to Google Cloud Run**
 
-### Azure Configuration
+### Google Cloud Configuration
 
-For deployment to Azure, configure these secrets in GitHub repository settings:
+For deployment to Google Cloud, configure these secrets in GitHub repository settings:
 
-- `AZURE_CREDENTIALS` - Service principal JSON (see AZURE_DEPLOYMENT_GUIDE.md)
-- `AZURE_RESOURCE_GROUP` - Azure resource group name
-- `AZURE_REGISTRY_LOGIN_SERVER` - ACR login server URL
-- `AZURE_REGISTRY_USERNAME` - ACR username
-- `AZURE_REGISTRY_PASSWORD` - ACR password
-- `AZURE_DNS_NAME_LABEL` - Unique DNS label for your container
-- `AZURE_LOCATION` - Azure region (e.g., `eastus`)
+- `GCP_SA_KEY` - Service account JSON key (see GCP_DEPLOYMENT_GUIDE.md)
+- `GCP_PROJECT_ID` - Your GCP project ID
+- `GCP_REGION` - GCP region (e.g., `us-central1`)
 
-**See `AZURE_DEPLOYMENT_GUIDE.md` for detailed setup instructions.**
+**See `GCP_DEPLOYMENT_GUIDE.md` for detailed setup instructions.**
 
 ---
 
