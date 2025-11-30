@@ -26,7 +26,8 @@ jobs:
         run: |
           php -m | grep -i xdebug || echo "WARNING: Xdebug not found"
           php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
-          if extension_loaded('xdebug'); then
+          # Use a php -r call that returns success (exit code 0) when Xdebug is loaded
+          if php -r "exit(extension_loaded('xdebug') ? 0 : 1);"; then
             php -r "echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL;"
           fi
       
