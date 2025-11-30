@@ -61,8 +61,15 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          # PHPUnit 10: Use --coverage flag to enable coverage generation
-          # The phpunit.xml has coverage config, but we need to explicitly enable it
+          # PHPUnit 10: The --coverage-clover flag should trigger coverage collection
+          # If coverage isn't generated, it means Xdebug isn't collecting coverage data
+          php -r "var_dump(ini_get('xdebug.mode'));"
+          php -r "xdebug_info('mode');" | grep -i coverage || echo "Coverage mode not set"
+          
+          # Try to set Xdebug mode explicitly
+          export XDEBUG_MODE=coverage
+          php -r "var_dump(ini_get('xdebug.mode'));"
+          
           ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
           
           echo "Checking if coverage files were generated..."
