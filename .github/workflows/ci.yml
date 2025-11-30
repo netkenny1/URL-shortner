@@ -66,8 +66,10 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          echo "Generating coverage reports..."
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
+          echo "Running tests with coverage..."
+          # PHPUnit 10 configuration is in phpunit.xml
+          # Just run phpunit - it will pick up PCOV and the XML config
+          ./vendor/bin/phpunit
           
           EXIT_CODE=$?
           echo "PHPUnit exit code: $EXIT_CODE"
