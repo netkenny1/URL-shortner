@@ -45,24 +45,9 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 RUN mkdir -p /var/www/html/data && \
     chown -R www-data:www-data /var/www/html/data
 
-# ============================================
-# CLOUD RUN: Configure Apache to listen on 8080
-# ============================================
-# Rewrite ports.conf to listen on 8080
-RUN echo "Listen 8080" > /etc/apache2/ports.conf
-
-# Rewrite VirtualHost to use 8080
-RUN echo '<VirtualHost *:8080>\n\
-    ServerAdmin webmaster@localhost\n\
-    DocumentRoot /var/www/html\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-    <Directory /var/www/html>\n\
-        Options Indexes FollowSymLinks\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+# Copy and configure entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Set environment variables
 ENV PORT=8080
@@ -72,5 +57,5 @@ ENV APACHE_RUN_GROUP=www-data
 # Expose port 8080
 EXPOSE 8080
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Use custom entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]

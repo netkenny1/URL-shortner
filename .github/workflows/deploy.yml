@@ -53,7 +53,7 @@ jobs:
             --region ${{ secrets.GCP_REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --port 80 \
+            --port 8080 \
             --memory 512Mi \
             --cpu 1 \
             --set-env-vars DB_DSN=sqlite:/var/www/html/data/data.sqlite
