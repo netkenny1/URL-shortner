@@ -54,17 +54,30 @@ jobs:
           fi
           echo "✅ Syntax check passed"
       
-      - name: Run tests with coverage
+      - name: Prepare coverage directory
         run: |
           mkdir -p coverage
+          chmod -R 0777 coverage
+      
+      - name: Debug PHP & PHPUnit
+        run: |
+          php -v
+          php -m | grep -i xdebug || true
+          php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+          php -r "if (extension_loaded('xdebug')) { echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL; }"
+          ./vendor/bin/phpunit --version
+      
+      - name: Run tests with coverage
+        run: |
           if [ ! -f ./vendor/bin/phpunit ]; then
             echo "PHPUnit not found! Installing..."
             composer install --prefer-dist --no-progress --no-interaction
           fi
           
           echo "Running tests with coverage..."
-          # Use equals sign for coverage-clover as suggested
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml \
+                               --coverage-html=coverage/html \
+                               --coverage-text=coverage/coverage.txt
           
           EXIT_CODE=$?
           echo "PHPUnit exit code: $EXIT_CODE"
@@ -79,10 +92,8 @@ jobs:
           
           if [ ! -f coverage/clover.xml ]; then
             echo "ERROR: Coverage file was not generated!"
-            echo "Checking Xdebug status..."
-            php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
-            php -r "if (extension_loaded('xdebug')) { echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL; }"
-            php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
+            echo "Running with debug to see what's happening..."
+            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --debug 2>&1 | sed -n '1,200p'
             exit 1
           fi
           
