@@ -453,6 +453,10 @@ IE University
 
 ## 📚 Additional Documentation
 
+- **REPORT.md** - Comprehensive assignment report covering all improvements
+- **GCP_DEPLOYMENT_GUIDE.md** - Step-by-step Google Cloud Platform deployment instructions
+- **PROFESSOR_ACCESS_GUIDE.md** - Instructions for granting professor access to Cloud Run console
+
 See `REPORT.md` for detailed information about:
 - Code improvements and refactoring
 - Testing strategy and coverage implementation
