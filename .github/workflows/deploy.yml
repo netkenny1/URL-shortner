@@ -77,19 +77,25 @@ jobs:
           # Ensure coverage directory exists
           mkdir -p coverage/html
           
-          # Run tests with coverage - try generating clover first, then HTML
-          echo "Running PHPUnit with coverage (clover only first)..."
-          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml 2>&1 | tail -20
+          # Run tests with coverage
+          # phpunit.xml now has coverage config, so we just need to enable coverage
+          echo "Running PHPUnit with coverage..."
+          echo "Checking source directory structure..."
+          ls -la src/ || echo "src directory check"
+          echo "Source files:"
+          find src -name "*.php" | head -10
           
-          # If clover was generated, now generate HTML
+          # Run with coverage - XML config will handle output formats
+          # Use --coverage flag to enable coverage collection
+          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html
+          
+          echo "PHPUnit completed. Checking for coverage files..."
+          ls -la coverage/ || true
           if [ -f coverage/clover.xml ]; then
-            echo "Clover XML generated, now generating HTML coverage..."
-            ./vendor/bin/phpunit --coverage-html coverage/html 2>&1 | tail -10
+            echo "✅ Clover XML file found!"
+            ls -lh coverage/clover.xml
           else
-            echo "Clover not generated on first attempt, trying with both flags..."
-            ./vendor/bin/phpunit \
-              --coverage-clover coverage/clover.xml \
-              --coverage-html coverage/html
+            echo "⚠️ Clover XML not found, but continuing to check..."
           fi
           
           TEST_EXIT_CODE=$?
