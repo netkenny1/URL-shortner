@@ -12,5 +12,19 @@
             <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">src</directory>
+            <file>api.php</file>
+            <file>redirect.php</file>
+            <file>lib.php</file>
+        </include>
+    </source>
+    <coverage>
+        <report>
+            <clover outputFile="coverage/clover.xml"/>
+            <html outputDirectory="coverage/html"/>
+            <text outputFile="coverage/coverage.txt"/>
+        </report>
+    </coverage>
 </phpunit>
-
