@@ -66,17 +66,32 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          # PHPUnit 10: Use explicit whitelist to ensure files are included
-          # The coverage-clover flag should trigger coverage collection
-          echo "Running PHPUnit with coverage enabled..."
-          ./vendor/bin/phpunit \
-            --coverage-clover=coverage/clover.xml \
-            --coverage-html=coverage/html \
-            --coverage-text=coverage/coverage.txt \
-            --whitelist=src \
-            --whitelist=api.php \
-            --whitelist=redirect.php \
-            --whitelist=lib.php
+          # PHPUnit 10: The issue might be that coverage isn't being triggered
+          # Let's try using the testdox format to see what's happening
+          echo "Testing if coverage works at all..."
+          
+          # First, try a simple coverage command
+          ./vendor/bin/phpunit --coverage-text 2>&1 | head -20
+          
+          # Now try generating the clover file
+          echo "Generating clover.xml..."
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml 2>&1
+          
+          # Check if file was created
+          if [ -f coverage/clover.xml ]; then
+            echo "✅ Clover XML generated!"
+            # Now generate other formats
+            ./vendor/bin/phpunit --coverage-html=coverage/html --coverage-text=coverage/coverage.txt 2>&1 || true
+          else
+            echo "❌ Clover XML still not generated"
+            echo "Trying with explicit paths..."
+            ./vendor/bin/phpunit \
+              --coverage-clover=coverage/clover.xml \
+              --whitelist=./src \
+              --whitelist=./api.php \
+              --whitelist=./redirect.php \
+              --whitelist=./lib.php 2>&1
+          fi
           
           # Debug: Check what PHPUnit actually did
           echo "PHPUnit exit code: $?"
