@@ -2,7 +2,8 @@
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
-         colors="true">
+         colors="true"
+         cacheDirectory=".phpunit.cache">
     <testsuites>
         <testsuite name="Unit Tests">
             <directory>tests/Unit</directory>
@@ -11,16 +12,11 @@
             <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
-    <source>
+    <source restrictNotices="true" restrictWarnings="true">
         <include>
-            <directory suffix=".php">src</directory>
-            <file>api.php</file>
-            <file>redirect.php</file>
-            <file>lib.php</file>
+            <directory>src</directory>
         </include>
-        <exclude>
-            <directory suffix=".php">vendor</directory>
-            <directory suffix=".php">tests</directory>
-        </exclude>
     </source>
+    <coverage includeUncoveredFiles="true">
+    </coverage>
 </phpunit>
