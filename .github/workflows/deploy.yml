@@ -20,9 +20,35 @@ jobs:
           extensions: pdo_sqlite, xdebug
           coverage: xdebug
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
       - name: Install dependencies
         run: |
-          composer install --prefer-dist --no-progress --no-interaction
+          echo "Installing dependencies (with retry for network issues)..."
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if composer install --prefer-dist --no-progress --no-interaction; then
+              echo "✅ Dependencies installed successfully"
+              exit 0
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠️ Installation failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+                sleep 5
+              else
+                echo "❌ Failed to install dependencies after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
 
       - name: Verify Xdebug is enabled
         run: |
