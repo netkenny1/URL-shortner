@@ -67,9 +67,13 @@ jobs:
           
           echo "Running tests with coverage..."
           echo "Running tests with coverage..."
-          # PHPUnit 10 configuration is in phpunit.xml
-          # Just run phpunit - it will pick up PCOV and the XML config
-          ./vendor/bin/phpunit
+          # PCOV is loaded, but files aren't generating
+          # Try explicit coverage-text to force output to console first
+          ./vendor/bin/phpunit --coverage-text
+          
+          # Check if that worked (it should show coverage percentage)
+          echo "Generating XML report explicitly..."
+          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml
           
           EXIT_CODE=$?
           echo "PHPUnit exit code: $EXIT_CODE"
@@ -97,8 +101,8 @@ jobs:
               echo "No coverage driver loaded!"
             fi
             
-            echo "Attempting to generate coverage with verbose output..."
-            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml -vv 2>&1 | head -50
+            echo "Attempting to generate coverage with debug output..."
+            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --debug 2>&1 | head -50
             
             echo "Attempting to run tests without coverage to verify tests pass..."
             ./vendor/bin/phpunit
