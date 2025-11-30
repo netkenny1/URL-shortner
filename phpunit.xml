@@ -2,8 +2,7 @@
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
-         colors="true"
-         verbose="true">
+         colors="true">
     <testsuites>
         <testsuite name="Unit Tests">
             <directory>tests/Unit</directory>
@@ -12,7 +11,7 @@
             <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
-    <coverage processUncoveredFiles="true">
+    <source>
         <include>
             <directory suffix=".php">src</directory>
             <file>api.php</file>
@@ -20,14 +19,8 @@
             <file>lib.php</file>
         </include>
         <exclude>
-            <directory>vendor</directory>
-            <directory>tests</directory>
-            <directory>coverage</directory>
+            <directory suffix=".php">vendor</directory>
+            <directory suffix=".php">tests</directory>
         </exclude>
-    </coverage>
-    <logging>
-        <log type="coverage-clover" target="coverage/clover.xml"/>
-        <log type="coverage-html" target="coverage/html"/>
-        <log type="coverage-text" target="coverage/coverage.txt"/>
-    </logging>
+    </source>
 </phpunit>
