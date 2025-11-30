@@ -61,20 +61,37 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
+          # Force coverage generation with explicit flags
+          ./vendor/bin/phpunit \
+            --coverage-clover=coverage/clover.xml \
+            --coverage-html=coverage/html \
+            --coverage-text=coverage/coverage.txt \
+            --coverage-filter=src \
+            --coverage-filter=api.php \
+            --coverage-filter=redirect.php \
+            --coverage-filter=lib.php \
+            --log-junit=coverage/junit.xml
           
           echo "Checking if coverage files were generated..."
           ls -la coverage/ || echo "Coverage directory is empty"
           
           if [ ! -f coverage/clover.xml ]; then
             echo "ERROR: Coverage file was not generated!"
-            echo "This usually means Xdebug is not properly enabled."
+            echo "Checking PHPUnit version and coverage support..."
+            ./vendor/bin/phpunit --version
+            php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+            php -r "if (extension_loaded('xdebug')) { echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL; }"
+            
+            echo "Attempting to generate coverage with verbose output..."
+            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --verbose 2>&1 | head -50
+            
             echo "Attempting to run tests without coverage to verify tests pass..."
             ./vendor/bin/phpunit
             exit 1
           fi
           
           echo "✅ Coverage file generated successfully"
+          echo "Coverage file size: $(stat -f%z coverage/clover.xml 2>/dev/null || stat -c%s coverage/clover.xml 2>/dev/null || echo 'unknown') bytes"
       
       - name: Check coverage threshold
         run: |
