@@ -11,7 +11,75 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup PHP with Xdebug
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, xdebug
+          coverage: xdebug
+
+      - name: Install dependencies
+        run: |
+          composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run unit tests
+        env:
+          XDEBUG_MODE: coverage
+        run: |
+          echo "Running tests before deployment..."
+          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml
+          if [ $? -ne 0 ]; then
+            echo "❌ Tests failed! Deployment aborted."
+            exit 1
+          fi
+          echo "✅ All tests passed!"
+
+      - name: Generate coverage report
+        env:
+          XDEBUG_MODE: coverage
+        run: |
+          echo "Generating coverage report..."
+          ./vendor/bin/phpunit --coverage-html coverage/html --coverage-clover coverage/clover.xml
+          echo "✅ Coverage report generated in coverage/html/"
+
+      - name: Check coverage threshold
+        run: |
+          if [ ! -f coverage/clover.xml ]; then
+            echo "⚠️ Coverage file not found"
+            exit 1
+          fi
+          
+          php -r "
+            \$xml = @simplexml_load_file('coverage/clover.xml');
+            if (\$xml === false) { 
+              echo '❌ Failed to parse coverage file\n';
+              exit(1); 
+            }
+            \$metrics = \$xml->project->metrics;
+            \$statements = (int)\$metrics['statements'];
+            \$covered = (int)\$metrics['coveredstatements'];
+            if (\$statements > 0) {
+              \$percent = (\$covered / \$statements) * 100;
+              echo 'Code coverage: ' . number_format(\$percent, 2) . '%\n';
+              if (\$percent < 70) { 
+                echo '❌ Coverage ' . number_format(\$percent, 2) . '% is below 70% threshold! Deployment aborted.\n';
+                exit(1); 
+              }
+              echo '✅ Coverage threshold met!\n';
+            } else { 
+              echo '❌ No statements found in coverage file\n';
+              exit(1); 
+            }
+          "
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports-deploy
+          path: coverage/
+          retention-days: 30
 
       - name: Authenticate to Google
         uses: google-github-actions/auth@v2

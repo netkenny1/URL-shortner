@@ -136,15 +136,27 @@ composer install
 
 ## 🧪 Running Tests
 
-### Run All Tests
+### Run All Tests (Single Command)
+
+You can run all tests with a single command:
 
 ```bash
-# Using Composer
+# Option 1: Using Composer (recommended)
 composer test
 
-# Or directly with PHPUnit
+# Option 2: Using PHPUnit directly
 ./vendor/bin/phpunit
+
+# Option 3: Using the test runner script
+./run-tests.sh
 ```
+
+All three commands will:
+- ✅ Run all unit and integration tests
+- ✅ Validate link shortening functionality
+- ✅ Validate redirection functionality
+- ✅ Test service logic locally
+- ✅ Display test results and coverage summary
 
 ### Run Specific Test Suites
 

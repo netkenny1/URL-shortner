@@ -44,8 +44,10 @@ This guide walks you through deploying ShortKenny to Google Cloud Run using Dock
 4. Click "Create and Continue"
 5. Grant roles:
    - **Cloud Run Admin**
+   - **Cloud Build Editor** (for building container images)
    - **Service Account User**
    - **Storage Admin** (for Container Registry)
+   - **Logs Viewer** (for streaming build logs)
 6. Click "Continue" then "Done"
 
 ### Step 5: Create and Download Service Account Key
@@ -140,11 +142,19 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/iam.serviceAccountUser"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/logging.viewer"
 
 # Create and download key
 gcloud iam service-accounts keys create key.json \
@@ -154,6 +164,27 @@ gcloud iam service-accounts keys create key.json \
 ```
 
 ## Troubleshooting
+
+### Cloud Build "Cannot Stream Logs" Error
+
+If you see this error in GitHub Actions:
+```
+ERROR: (gcloud.builds.submit) 
+The build is running, and logs are being written to the default logs bucket.
+This tool can only stream logs if you are Viewer/Owner of the project...
+```
+
+**The build is actually running successfully!** The error is just about log streaming permissions.
+
+**Fix:** Add the Logs Viewer role to your service account:
+```bash
+PROJECT_ID="YOUR_PROJECT_ID"
+SA_EMAIL="github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/logging.viewer"
+```
 
 ### Check Deployment Status
 

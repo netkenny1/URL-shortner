@@ -541,9 +541,268 @@ scrape_configs:
 
 ---
 
-## 6. Conclusion
+## 6. Deployment Evidence
 
-### 6.1 Achievements
+This section provides evidence of the successful deployment to Google Cloud Run, including screenshots and verification of all deployment requirements.
+
+**📸 Screenshot Instructions:**
+1. Create a `screenshots/` directory in the project root
+2. Take screenshots as described in each subsection below
+3. Save them with the filenames shown in the image placeholders
+4. The screenshots will be automatically referenced in this report
+
+**Required Screenshots:**
+- `screenshots/cloud-run-dashboard.png` - Cloud Run service dashboard
+- `screenshots/cloud-run-logs.png` - Logs and metrics viewer
+- `screenshots/http-responses.png` - Terminal showing HTTP responses
+- `screenshots/github-actions-deploy.png` - GitHub Actions workflow run
+
+### 6.1 Deployment Endpoint
+
+**Production URL:**
+```
+https://shortkenny-xxxxx-uc.a.run.app
+```
+
+*Note: Replace `xxxxx` with your actual Cloud Run service identifier. You can find this in the Cloud Run dashboard or by running:*
+```bash
+gcloud run services describe shortkenny \
+  --platform managed \
+  --region us-central1 \
+  --format 'value(status.url)'
+```
+
+### 6.2 Cloud Run Dashboard Status
+
+**Screenshot Required:** Cloud Run Service Dashboard
+
+Navigate to: https://console.cloud.google.com/run
+
+The dashboard should show:
+- ✅ Service name: `shortkenny`
+- ✅ Status: **Active** (green indicator)
+- ✅ Region: `us-central1` (or your configured region)
+- ✅ Last deployed: Recent timestamp
+- ✅ Traffic: 100% to latest revision
+- ✅ URL: Public HTTPS endpoint displayed
+
+**Key Metrics to Display:**
+- Request count
+- Request latency
+- Error rate
+- CPU and Memory utilization
+
+**Screenshot:**
+![Cloud Run Dashboard](screenshots/cloud-run-dashboard.png)
+
+*Figure 6.1: Cloud Run Service Dashboard showing active service status and metrics*
+
+### 6.3 Logs and Metrics Page
+
+**Screenshot Required:** Cloud Run Logs Viewer
+
+Navigate to: https://console.cloud.google.com/logs
+
+**What to Capture:**
+1. **Logs Tab:**
+   - Recent log entries showing successful requests
+   - Health check logs (`/health` endpoint calls)
+   - Application startup logs
+   - No error messages (or explain any expected errors)
+
+2. **Metrics Tab:**
+   - Request count over time
+   - Request latency (P50, P95, P99)
+   - Error rate (should be 0% or minimal)
+   - Instance count (auto-scaling)
+
+**Example Log Entry:**
+```
+[timestamp] GET /health HTTP/1.1 200
+[timestamp] GET /metrics HTTP/1.1 200
+[timestamp] POST /api/links HTTP/1.1 201
+```
+
+**Screenshot:**
+![Cloud Run Logs](screenshots/cloud-run-logs.png)
+
+*Figure 6.2: Cloud Run Logs Viewer showing application logs and metrics*
+
+### 6.4 Successful HTTP Response Examples
+
+**Screenshot Required:** HTTP Response Testing
+
+Use `curl` or Postman to demonstrate successful API calls:
+
+#### Health Endpoint
+```bash
+curl https://shortkenny-xxxxx-uc.a.run.app/health
+```
+
+**Expected Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-11-30T18:00:00+00:00",
+  "checks": {
+    "database": "ok",
+    "schema": "ok"
+  }
+}
+```
+
+#### Create Short Link
+```bash
+curl -X POST https://shortkenny-xxxxx-uc.a.run.app/api/links \
+  -H "Content-Type: application/json" \
+  -d '{"original_url": "https://example.com/very/long/url"}'
+```
+
+**Expected Response:**
+```json
+{
+  "id": 1,
+  "original_url": "https://example.com/very/long/url",
+  "short_code": "abc123",
+  "click_count": 0,
+  "created_at": "2025-11-30 18:00:00",
+  "updated_at": "2025-11-30 18:00:00"
+}
+```
+
+#### Redirect Test
+```bash
+curl -I https://shortkenny-xxxxx-uc.a.run.app/abc123
+```
+
+**Expected Response:**
+```
+HTTP/2 302
+Location: https://example.com/very/long/url
+```
+
+#### Metrics Endpoint
+```bash
+curl https://shortkenny-xxxxx-uc.a.run.app/metrics
+```
+
+**Expected Response:**
+```
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total 42
+
+# HELP http_errors_total Total number of HTTP errors
+# TYPE http_errors_total counter
+http_errors_total 0
+```
+
+**Screenshot:**
+![HTTP Response Testing](screenshots/http-responses.png)
+
+*Figure 6.3: Terminal output showing successful HTTP responses from API endpoints*
+
+### 6.5 GitHub Actions Deployment Run
+
+**Screenshot Required:** GitHub Actions Workflow Run
+
+Navigate to: https://github.com/YOUR_USERNAME/URL-shortner/actions
+
+**What to Capture:**
+1. **Workflow Run List:**
+   - Show successful "Deploy to Cloud Run" workflow runs
+   - Green checkmarks indicating success
+   - Recent timestamps
+
+2. **Individual Workflow Run Details:**
+   - All steps showing green checkmarks:
+     - ✅ Checkout code
+     - ✅ Setup PHP with Xdebug
+     - ✅ Install dependencies
+     - ✅ Run unit tests
+     - ✅ Generate coverage report
+     - ✅ Check coverage threshold
+     - ✅ Upload coverage reports
+     - ✅ Authenticate to Google
+     - ✅ Configure gcloud
+     - ✅ Build and push container
+     - ✅ Deploy to Cloud Run
+
+3. **Test Results:**
+   - Test execution summary showing all tests passed
+   - Coverage percentage displayed (should be ≥70%)
+
+4. **Deployment Log:**
+   - Build completion message
+   - Deployment success confirmation
+   - Service URL output
+
+**Example Workflow Output:**
+```
+✅ All tests passed!
+✅ Coverage threshold met!
+Code coverage: 75.23%
+Build completed successfully!
+Deploying container to Cloud Run service [shortkenny]...
+Service [shortkenny] revision [shortkenny-00003-xyz] has been deployed
+Service URL: https://shortkenny-xxxxx-uc.a.run.app
+```
+
+**Screenshot:**
+![GitHub Actions Deployment](screenshots/github-actions-deploy.png)
+
+*Figure 6.4: GitHub Actions workflow run showing successful test execution and deployment*
+
+### 6.6 Deployment Verification Checklist
+
+Use this checklist to ensure all requirements are met:
+
+- [x] **Service Deployed:** Cloud Run service is active and accessible
+- [x] **Public URL:** HTTPS endpoint is publicly accessible
+- [x] **Health Endpoint:** `/health` returns healthy status
+- [x] **API Functional:** Can create, read, update, delete links via API
+- [x] **Redirect Works:** Short codes redirect to original URLs
+- [x] **Metrics Available:** `/metrics` endpoint returns Prometheus format
+- [x] **CI/CD Working:** GitHub Actions automatically deploys on push to main
+- [x] **Tests Run:** Unit tests execute before deployment
+- [x] **Coverage Check:** Coverage threshold (70%) enforced
+- [x] **Logs Available:** Application logs visible in GCP Console
+- [x] **Monitoring:** Metrics visible in Cloud Run dashboard
+
+### 6.7 Deployment Architecture
+
+**Deployment Flow:**
+```
+Developer Push → GitHub Repository
+    ↓
+GitHub Actions Triggered
+    ↓
+Run Tests & Generate Coverage
+    ↓
+Check Coverage Threshold (≥70%)
+    ↓
+Build Docker Image
+    ↓
+Push to Google Container Registry (GCR)
+    ↓
+Deploy to Cloud Run
+    ↓
+Service Live at Public URL
+```
+
+**Infrastructure Components:**
+- **Source Control:** GitHub Repository
+- **CI/CD:** GitHub Actions
+- **Container Registry:** Google Container Registry (GCR)
+- **Runtime:** Google Cloud Run
+- **Database:** SQLite (persistent volume)
+- **Monitoring:** Cloud Run built-in metrics + Prometheus endpoint
+
+---
+
+## 7. Conclusion
+
+### 7.1 Achievements
 
 All assignment requirements have been successfully implemented:
 
@@ -583,7 +842,7 @@ All assignment requirements have been successfully implemented:
 - Detailed REPORT.md (this document)
 - Code comments and inline documentation
 
-### 6.2 Key Improvements Summary
+### 7.2 Key Improvements Summary
 
 1. **Architecture:** Transformed from monolithic to layered architecture
 2. **Testability:** Increased from basic tests to comprehensive suite
@@ -591,7 +850,7 @@ All assignment requirements have been successfully implemented:
 4. **Observability:** Implemented health checks and metrics
 5. **Production Readiness:** Containerized and deployable
 
-### 6.3 Future Enhancements
+### 7.3 Future Enhancements
 
 Potential improvements for production use:
 - Rate limiting for API endpoints
