@@ -87,6 +87,8 @@ jobs:
           ./vendor/bin/phpunit --version
       
       - name: Run tests with coverage
+        env:
+          XDEBUG_MODE: coverage
         run: |
           if [ ! -f ./vendor/bin/phpunit ]; then
             echo "PHPUnit not found! Installing..."
@@ -94,6 +96,11 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
+          echo "XDEBUG_MODE: $XDEBUG_MODE"
+          php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+          php -r "if (extension_loaded('xdebug')) { echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL; }"
+          
+          # Run PHPUnit with coverage flags
           ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml \
                                --coverage-html=coverage/html \
                                --coverage-text=coverage/coverage.txt
@@ -112,11 +119,14 @@ jobs:
           if [ ! -f coverage/clover.xml ]; then
             echo "ERROR: Coverage file was not generated!"
             echo "Running with debug to see what's happening..."
-            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --debug 2>&1 | sed -n '1,200p'
+            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --debug 2>&1 | head -100
+            echo "Checking if coverage directory is writable..."
+            touch coverage/test.txt && rm coverage/test.txt && echo "Directory is writable" || echo "Directory is NOT writable"
             exit 1
           fi
           
           echo "✅ Coverage file generated successfully"
+          ls -lh coverage/clover.xml
       
       - name: Check coverage threshold
         run: |
