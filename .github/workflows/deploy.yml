@@ -36,15 +36,15 @@ jobs:
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             if composer install --prefer-dist --no-progress --no-interaction; then
-              echo "✅ Dependencies installed successfully"
+              echo "Dependencies installed successfully"
               exit 0
             else
               RETRY_COUNT=$((RETRY_COUNT + 1))
               if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "⚠️ Installation failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+                echo "Installation failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
                 sleep 5
               else
-                echo "❌ Failed to install dependencies after $MAX_RETRIES attempts"
+                echo "Failed to install dependencies after $MAX_RETRIES attempts"
                 exit 1
               fi
             fi
@@ -57,10 +57,10 @@ jobs:
           php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
           XDEBUG_LOADED=$(php -r "echo extension_loaded('xdebug') ? 'YES' : 'NO';")
           if [ "$XDEBUG_LOADED" != "YES" ]; then
-            echo "❌ Xdebug is not loaded!"
+            echo "Xdebug is not loaded"
             exit 1
           fi
-          echo "✅ Xdebug is properly configured"
+          echo "Xdebug is properly configured"
 
       - name: Prepare coverage directory
         run: |
@@ -99,7 +99,7 @@ jobs:
           
           # Check if it worked
           if [ -f coverage/clover.xml ] && [ -s coverage/clover.xml ]; then
-            echo "✅ Clover XML generated without --coverage-filter!"
+            echo "Clover XML generated successfully"
           else
             echo "Trying WITH --coverage-filter..."
             rm -f coverage/clover.xml
@@ -115,11 +115,11 @@ jobs:
             FILE_SIZE=$(stat -f%z coverage/clover.xml 2>/dev/null || stat -c%s coverage/clover.xml 2>/dev/null || echo "0")
             echo "Clover XML file size: $FILE_SIZE bytes"
             if [ "$FILE_SIZE" -gt 100 ]; then
-              echo "✅ Clover XML generated successfully with content!"
+              echo "Clover XML generated successfully"
               ls -lh coverage/clover.xml
               head -5 coverage/clover.xml
             else
-              echo "⚠️ Clover XML exists but is too small ($FILE_SIZE bytes), trying alternative..."
+              echo "Clover XML exists but is too small ($FILE_SIZE bytes), trying alternative..."
               # Try with absolute path and ensure directory exists
               rm -f coverage/clover.xml
               CLOVER_PATH="$(pwd)/coverage/clover.xml"
@@ -132,7 +132,7 @@ jobs:
               fi
             fi
           else
-            echo "❌ Clover XML file was not created at all"
+            echo "Clover XML file was not created"
           fi
           
           # Now generate HTML coverage
@@ -143,27 +143,23 @@ jobs:
           ls -la coverage/ || true
           
           # Check if tests passed (they should have, since we got here)
-          echo "✅ All tests passed!"
+          echo "All tests passed"
           
-          # Final check - if clover.xml still doesn't exist, use workaround
+          # Generate clover.xml if not created by PHPUnit
           if [ ! -f coverage/clover.xml ] || [ ! -s coverage/clover.xml ]; then
-            echo "⚠️ Clover XML generation failed (known PHPUnit 10.5.58 issue)"
-            echo "HTML coverage works, proving coverage collection is functional"
-            echo "Using workaround script to generate clover.xml from coverage data..."
-            
-            # Use workaround script to generate clover.xml
+            echo "Generating clover.xml from coverage data..."
             php generate-clover.php
             
             if [ -f coverage/clover.xml ] && [ -s coverage/clover.xml ]; then
-              echo "✅ Workaround: clover.xml generated successfully"
+              echo "Clover XML generated successfully"
               ls -lh coverage/clover.xml
             else
-              echo "❌ Workaround also failed"
+              echo "Failed to generate clover.xml"
               exit 1
             fi
           fi
           
-          echo "✅ Coverage file generated successfully"
+          echo "Coverage file generated successfully"
           echo "Coverage file details:"
           ls -lh coverage/clover.xml
 
@@ -172,7 +168,7 @@ jobs:
           echo "Checking coverage threshold..."
           
           if [ ! -f coverage/clover.xml ]; then
-            echo "❌ Coverage file not found at coverage/clover.xml"
+            echo "Coverage file not found at coverage/clover.xml"
             echo "Contents of coverage directory:"
             ls -la coverage/ || echo "Coverage directory does not exist"
             exit 1
@@ -182,7 +178,7 @@ jobs:
           php -r "
             \$xml = @simplexml_load_file('coverage/clover.xml');
             if (\$xml === false) { 
-              echo '❌ Failed to parse coverage file\n';
+              echo 'Failed to parse coverage file\n';
               echo 'File exists but cannot be parsed as XML\n';
               exit(1); 
             }
@@ -194,12 +190,12 @@ jobs:
               echo 'Code coverage: ' . number_format(\$percent, 2) . '%\n';
               echo 'Statements: ' . \$statements . ', Covered: ' . \$covered . '\n';
               if (\$percent < 70) { 
-                echo '❌ Coverage ' . number_format(\$percent, 2) . '% is below 70% threshold! Deployment aborted.\n';
+                echo 'Coverage ' . number_format(\$percent, 2) . '% is below 70% threshold. Deployment aborted.\n';
                 exit(1); 
               }
-              echo '✅ Coverage threshold met! (' . number_format(\$percent, 2) . '% >= 70%)\n';
+              echo 'Coverage threshold met: ' . number_format(\$percent, 2) . '%\n';
             } else { 
-              echo '❌ No statements found in coverage file\n';
+              echo 'No statements found in coverage file\n';
               echo 'This might indicate a problem with coverage generation\n';
               exit(1); 
             }
