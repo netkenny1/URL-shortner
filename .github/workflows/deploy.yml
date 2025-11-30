@@ -65,7 +65,10 @@ jobs:
       - name: Prepare coverage directory
         run: |
           mkdir -p coverage/html
+          touch coverage/clover.xml
           chmod -R 777 coverage
+          echo "Coverage directory prepared:"
+          ls -la coverage/
 
       - name: Run unit tests with coverage
         env:
@@ -78,24 +81,46 @@ jobs:
           mkdir -p coverage/html
           
           # Run tests with coverage
-          # phpunit.xml now has coverage config, so we just need to enable coverage
           echo "Running PHPUnit with coverage..."
           echo "Checking source directory structure..."
           ls -la src/ || echo "src directory check"
           echo "Source files:"
           find src -name "*.php" | head -10
           
-          # Run with coverage - XML config will handle output formats
-          # Use --coverage flag to enable coverage collection
-          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html
+          # Try generating clover.xml first (before HTML) to avoid any conflicts
+          echo "Step 1: Generating clover.xml only..."
+          ./vendor/bin/phpunit \
+            --coverage-clover coverage/clover.xml \
+            --coverage-filter "$(pwd)/src" \
+            --log-junit coverage/junit.xml 2>&1 | tail -30
           
-          echo "PHPUnit completed. Checking for coverage files..."
-          ls -la coverage/ || true
-          if [ -f coverage/clover.xml ]; then
-            echo "✅ Clover XML file found!"
+          if [ -f coverage/clover.xml ] && [ -s coverage/clover.xml ]; then
+            echo "✅ Clover XML generated successfully!"
             ls -lh coverage/clover.xml
           else
-            echo "⚠️ Clover XML not found, but continuing to check..."
+            echo "⚠️ Clover XML not generated or empty, trying alternative..."
+            # Try with absolute path
+            CLOVER_PATH="$(pwd)/coverage/clover.xml"
+            ./vendor/bin/phpunit --coverage-clover "$CLOVER_PATH" --coverage-filter "$(pwd)/src" 2>&1 | tail -20
+          fi
+          
+          # Now generate HTML coverage
+          echo "Step 2: Generating HTML coverage..."
+          ./vendor/bin/phpunit --coverage-html coverage/html --coverage-filter "$(pwd)/src" 2>&1 | tail -10
+          
+          echo "Final check for coverage files..."
+          ls -la coverage/ || true
+          if [ -f coverage/clover.xml ]; then
+            if [ -s coverage/clover.xml ]; then
+              echo "✅ Clover XML file exists and has content!"
+              ls -lh coverage/clover.xml
+            else
+              echo "⚠️ Clover XML exists but is empty"
+              exit 1
+            fi
+          else
+            echo "❌ Clover XML file not found after all attempts"
+            exit 1
           fi
           
           TEST_EXIT_CODE=$?
