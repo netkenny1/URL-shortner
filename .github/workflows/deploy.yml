@@ -46,21 +46,50 @@ jobs:
           XDEBUG_MODE: coverage
         run: |
           echo "Running tests with coverage before deployment..."
+          echo "XDEBUG_MODE: $XDEBUG_MODE"
+          
+          # Ensure coverage directory exists
+          mkdir -p coverage/html
+          
+          # Run tests - use --coverage flag to enable coverage collection
+          # The phpunit.xml config will handle output formats
           ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html
-          if [ $? -ne 0 ]; then
+          
+          TEST_EXIT_CODE=$?
+          if [ $TEST_EXIT_CODE -ne 0 ]; then
             echo "❌ Tests failed! Deployment aborted."
             exit 1
           fi
           echo "✅ All tests passed!"
           
-          # Verify coverage file was created
+          # Verify coverage files were created
+          echo "Checking for coverage files..."
+          ls -la coverage/ || true
+          
           if [ ! -f coverage/clover.xml ]; then
-            echo "❌ Coverage file was not generated!"
-            echo "Listing coverage directory:"
-            ls -la coverage/ || true
-            exit 1
+            echo "❌ Coverage file (clover.xml) was not generated!"
+            echo "Debugging coverage generation..."
+            
+            # Check if HTML was generated (proves coverage ran)
+            if [ -d coverage/html ] && [ "$(ls -A coverage/html)" ]; then
+              echo "HTML coverage was generated, but clover.xml was not"
+              echo "This suggests a configuration issue"
+            fi
+            
+            # Try alternative: generate clover separately
+            echo "Attempting to generate clover.xml separately..."
+            XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --no-coverage-html
+            
+            if [ ! -f coverage/clover.xml ]; then
+              echo "❌ Failed to generate clover.xml after retry"
+              echo "This might indicate an issue with source file paths or Xdebug configuration"
+              exit 1
+            fi
           fi
+          
           echo "✅ Coverage file generated successfully"
+          echo "Coverage file details:"
+          ls -lh coverage/clover.xml
 
       - name: Check coverage threshold
         run: |
