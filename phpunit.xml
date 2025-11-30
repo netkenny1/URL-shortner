@@ -23,11 +23,6 @@
             <directory>tests</directory>
             <directory>vendor</directory>
         </exclude>
-        <report>
-            <html outputDirectory="coverage/html"/>
-            <clover outputFile="coverage/clover.xml"/>
-            <text outputFile="coverage/coverage.txt"/>
-        </report>
     </coverage>
 </phpunit>
 

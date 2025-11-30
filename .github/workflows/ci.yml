@@ -64,28 +64,12 @@ jobs:
           # Set Xdebug mode explicitly for coverage
           export XDEBUG_MODE=coverage
           
-          # PHPUnit 10: Use --coverage flag to enable coverage, then specify output formats
-          # The issue might be that phpunit.xml coverage config conflicts with CLI flags
-          # Let's use a simpler approach - just generate clover.xml first
-          echo "Attempting coverage generation..."
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml 2>&1 | tee coverage/phpunit-output.log
-          
-          # If that doesn't work, try without phpunit.xml coverage config
-          if [ ! -f coverage/clover.xml ]; then
-            echo "First attempt failed, trying with explicit coverage flags..."
-            ./vendor/bin/phpunit \
-              --coverage-clover=coverage/clover.xml \
-              --whitelist=src \
-              --whitelist=api.php \
-              --whitelist=redirect.php \
-              --whitelist=lib.php 2>&1 | tee -a coverage/phpunit-output.log
-          fi
-          
-          # Generate HTML and text reports if clover.xml exists
-          if [ -f coverage/clover.xml ]; then
-            echo "Clover XML generated, creating HTML and text reports..."
-            ./vendor/bin/phpunit --coverage-html=coverage/html --coverage-text=coverage/coverage.txt 2>&1 || true
-          fi
+          # PHPUnit 10: Generate all coverage reports in one command
+          # Removed report config from phpunit.xml, using CLI flags instead
+          ./vendor/bin/phpunit \
+            --coverage-clover=coverage/clover.xml \
+            --coverage-html=coverage/html \
+            --coverage-text=coverage/coverage.txt
           
           echo "Checking if coverage files were generated..."
           ls -la coverage/ || echo "Coverage directory is empty"
