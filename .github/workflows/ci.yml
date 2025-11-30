@@ -68,42 +68,70 @@ jobs:
       
       - name: Run tests with coverage
         run: |
-          echo "Running tests with PCOV coverage..."
+          echo "=== DEBUGGING INFO ==="
+          echo "Current directory: $(pwd)"
+          echo ""
+          echo "Files in src directory:"
+          ls -la src/ || echo "src directory not found!"
+          echo ""
+          echo "PHP files in src:"
+          find src -name "*.php" -type f 2>/dev/null || echo "No PHP files in src"
+          echo ""
+          echo "PCOV configuration:"
           php -r "echo 'PCOV loaded: ' . (extension_loaded('pcov') ? 'YES' : 'NO') . PHP_EOL;"
+          php -r "if(extension_loaded('pcov')) { print_r(ini_get_all('pcov')); }"
+          echo ""
+          echo "PHPUnit version:"
+          ./vendor/bin/phpunit --version
+          echo ""
+          echo "=== RUNNING TESTS ==="
           
-          # PHPUnit 10 requires source files in phpunit.xml <source> element
-          # --coverage-filter was removed in PHPUnit 10
+          # Run with explicit configuration
           ./vendor/bin/phpunit \
-            --coverage-clover coverage/clover.xml \
-            --coverage-text 2>&1 | tee phpunit-output.txt
-          
-          EXIT_CODE=${PIPESTATUS[0]}
-          echo "PHPUnit exit code: $EXIT_CODE"
+            --configuration phpunit.xml \
+            --coverage-text \
+            --coverage-clover coverage/clover.xml 2>&1 || true
           
           echo ""
-          echo "=== Full PHPUnit Output ==="
-          cat phpunit-output.txt
-          echo "==========================="
-          
-          echo ""
+          echo "=== CHECKING RESULTS ==="
           echo "Files in coverage directory:"
           ls -la coverage/ 2>&1 || echo "Coverage directory doesn't exist"
           
           if [ ! -f coverage/clover.xml ]; then
-            echo "ERROR: Coverage file was not generated!"
-            echo "This usually means phpunit.xml <source> config is wrong"
             echo ""
-            echo "Contents of phpunit.xml:"
-            cat phpunit.xml
+            echo "ERROR: Coverage file was not generated!"
+            echo ""
+            echo "Trying with pcov.enabled=1 explicitly..."
+            php -d pcov.enabled=1 -d pcov.directory=. ./vendor/bin/phpunit \
+              --configuration phpunit.xml \
+              --coverage-text \
+              --coverage-clover coverage/clover.xml 2>&1 || true
+            
+            echo ""
+            ls -la coverage/ 2>&1 || echo "Still no coverage"
+          fi
+          
+          if [ ! -f coverage/clover.xml ]; then
+            echo ""
+            echo "STILL NO COVERAGE - Trying minimal test..."
+            php -d pcov.enabled=1 -d pcov.directory=src ./vendor/bin/phpunit \
+              --configuration phpunit.xml \
+              --testsuite "Unit Tests" \
+              --coverage-text \
+              --coverage-clover coverage/clover.xml 2>&1 || true
+            ls -la coverage/ 2>&1
+          fi
+          
+          if [ -f coverage/clover.xml ]; then
+            echo "✅ Coverage file generated successfully"
+            ls -lh coverage/clover.xml
+            echo ""
+            echo "First 30 lines of clover.xml:"
+            head -30 coverage/clover.xml
+          else
+            echo "❌ FAILED: No coverage file generated"
             exit 1
           fi
-          
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "WARNING: Tests may have issues but coverage was generated"
-          fi
-          
-          echo "✅ Coverage file generated successfully"
-          ls -lh coverage/clover.xml
       
       - name: Check coverage threshold
         run: |
