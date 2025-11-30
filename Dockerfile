@@ -38,16 +38,20 @@ RUN chown -R www-data:www-data /var/www/html \
 # Allow .htaccess overrides
 RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
+# Configure Apache to listen on port 8080 (required by Cloud Run)
+RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \
+    sed -i 's/:80/:8080/' /etc/apache2/sites-available/000-default.conf
+
 # Create directory for SQLite database if needed
 RUN mkdir -p /var/www/html/data && \
     chown -R www-data:www-data /var/www/html/data
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
-# Expose port 80
-EXPOSE 80
+# Expose port 8080 (Cloud Run requirement)
+EXPOSE 8080
 
 # Start Apache
 CMD ["apache2-foreground"]

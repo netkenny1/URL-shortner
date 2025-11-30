@@ -15,7 +15,7 @@ spec:
       - image: gcr.io/PROJECT_ID/shortkenny:latest
         ports:
         - name: http1
-          containerPort: 80
+          containerPort: 8080
         env:
         - name: DB_DSN
           value: "sqlite:/var/www/html/data/data.sqlite"
