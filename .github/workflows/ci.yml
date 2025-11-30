@@ -19,8 +19,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_sqlite
+          extensions: pdo_sqlite, xdebug
           coverage: xdebug
+      
+      - name: Verify Xdebug is enabled
+        run: |
+          php -m | grep -i xdebug || echo "WARNING: Xdebug not found in loaded modules"
+          php -r "echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL;"
+          php -r "var_dump(extension_loaded('xdebug'));" || echo "Xdebug not loaded"
       
       - name: Install dependencies
         run: |
@@ -53,10 +59,22 @@ jobs:
             echo "PHPUnit not found! Installing..."
             composer install --prefer-dist --no-progress --no-interaction
           fi
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt || {
-            echo "Tests failed or coverage generation failed"
+          
+          echo "Running tests with coverage..."
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
+          
+          echo "Checking if coverage files were generated..."
+          ls -la coverage/ || echo "Coverage directory is empty"
+          
+          if [ ! -f coverage/clover.xml ]; then
+            echo "ERROR: Coverage file was not generated!"
+            echo "This usually means Xdebug is not properly enabled."
+            echo "Attempting to run tests without coverage to verify tests pass..."
+            ./vendor/bin/phpunit
             exit 1
-          }
+          fi
+          
+          echo "✅ Coverage file generated successfully"
       
       - name: Check coverage threshold
         run: |
