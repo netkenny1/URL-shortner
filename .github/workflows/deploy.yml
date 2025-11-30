@@ -146,8 +146,11 @@ jobs:
           echo "All tests passed"
           
           # Generate clover.xml if not created by PHPUnit
+          # PHPUnit 10.5.58 sometimes fails to generate clover.xml even though
+          # coverage collection works (HTML coverage proves this). This fallback
+          # script generates clover.xml from the coverage data.
           if [ ! -f coverage/clover.xml ] || [ ! -s coverage/clover.xml ]; then
-            echo "Generating clover.xml from coverage data..."
+            echo "PHPUnit clover output unavailable, using alternative generation method..."
             php generate-clover.php
             
             if [ -f coverage/clover.xml ] && [ -s coverage/clover.xml ]; then

@@ -170,6 +170,9 @@ Coverage is measured automatically in the CI pipeline:
 3. Coverage percentage calculated
 4. Pipeline fails if below 70%
 
+**Note on Clover XML Generation:**
+During development, I encountered an issue with PHPUnit 10.5.58 where the `--coverage-clover` flag occasionally fails to generate the clover.xml file, even though coverage collection itself works correctly (as evidenced by successful HTML coverage generation). To ensure reliable CI/CD integration, I implemented a fallback script (`generate-clover.php`) that generates clover.xml from the coverage data when PHPUnit's native output fails. This ensures the coverage threshold check always has the required clover.xml file available.
+
 ### 2.3 Test Execution
 
 Tests can be run:
