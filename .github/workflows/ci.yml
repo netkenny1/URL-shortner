@@ -33,7 +33,18 @@ jobs:
       
       - name: Run PHP syntax check
         run: |
-          find . -name "*.php" -not -path "./vendor/*" -not -path "./tests/*" -exec php -l {} \;
+          echo "Checking PHP syntax..."
+          ERROR_COUNT=0
+          while IFS= read -r file; do
+            if ! php -l "$file" 2>&1; then
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+            fi
+          done < <(find . -name "*.php" -not -path "./vendor/*" -not -path "./tests/*")
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "Found $ERROR_COUNT syntax errors!"
+            exit 1
+          fi
+          echo "✅ Syntax check passed"
       
       - name: Run tests with coverage
         run: |
