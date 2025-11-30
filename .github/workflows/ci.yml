@@ -61,16 +61,9 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          # Force coverage generation with explicit flags
-          ./vendor/bin/phpunit \
-            --coverage-clover=coverage/clover.xml \
-            --coverage-html=coverage/html \
-            --coverage-text=coverage/coverage.txt \
-            --coverage-filter=src \
-            --coverage-filter=api.php \
-            --coverage-filter=redirect.php \
-            --coverage-filter=lib.php \
-            --log-junit=coverage/junit.xml
+          # PHPUnit 10: Use --coverage flag to enable coverage generation
+          # The phpunit.xml has coverage config, but we need to explicitly enable it
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
           
           echo "Checking if coverage files were generated..."
           ls -la coverage/ || echo "Coverage directory is empty"
