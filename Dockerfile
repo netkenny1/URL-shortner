@@ -38,24 +38,24 @@ RUN chown -R www-data:www-data /var/www/html \
 # Allow .htaccess overrides
 RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
-# Configure Apache to listen on port 8080 (required by Cloud Run)
-# Replace port in ports.conf
-RUN sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf && \
-    sed -i 's/<VirtualHost \*:80>/<VirtualHost *:8080>/' /etc/apache2/sites-available/000-default.conf && \
-    echo "ServerName localhost" >> /etc/apache2/apache2.conf
+# Add ServerName to suppress warnings
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Create directory for SQLite database if needed
 RUN mkdir -p /var/www/html/data && \
     chown -R www-data:www-data /var/www/html/data
 
-# Set environment variable for Cloud Run
+# Copy and prepare entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set environment variables
 ENV PORT=8080
 ENV APACHE_RUN_USER=www-data
 ENV APACHE_RUN_GROUP=www-data
 
-# Expose port 8080 (Cloud Run requirement)
+# Expose port (Cloud Run requirement)
 EXPOSE 8080
 
-# Start Apache (no health check - Cloud Run handles this)
-CMD ["apache2-foreground"]
-
+# Use entrypoint script to configure Apache at runtime
+ENTRYPOINT ["docker-entrypoint.sh"]
