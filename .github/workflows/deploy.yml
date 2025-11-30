@@ -165,16 +165,22 @@ jobs:
           echo "Checking for coverage files..."
           ls -la coverage/ || true
           
-          # Final check
+          # Final check - if clover.xml still doesn't exist, use workaround
           if [ ! -f coverage/clover.xml ] || [ ! -s coverage/clover.xml ]; then
-            echo "❌ Clover XML is still missing or empty after all attempts"
-            echo "This appears to be a PHPUnit 10.5.58 issue with clover output"
-            echo "HTML coverage was generated successfully, proving:"
-            echo "  - Xdebug is working"
-            echo "  - Coverage collection is working"  
-            echo "  - Source files are being found"
-            echo "  - Only clover.xml output format is failing"
-            exit 1
+            echo "⚠️ Clover XML generation failed (known PHPUnit 10.5.58 issue)"
+            echo "HTML coverage works, proving coverage collection is functional"
+            echo "Using workaround script to generate clover.xml from coverage data..."
+            
+            # Use workaround script to generate clover.xml
+            php generate-clover.php
+            
+            if [ -f coverage/clover.xml ] && [ -s coverage/clover.xml ]; then
+              echo "✅ Workaround: clover.xml generated successfully"
+              ls -lh coverage/clover.xml
+            else
+              echo "❌ Workaround also failed"
+              exit 1
+            fi
           fi
           
           echo "✅ Coverage file generated successfully"
