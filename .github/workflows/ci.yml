@@ -22,13 +22,28 @@ jobs:
           extensions: pdo_sqlite, xdebug
           coverage: xdebug
       
-      - name: Verify Xdebug is enabled
+      - name: Verify and configure Xdebug
         run: |
-          php -m | grep -i xdebug || echo "WARNING: Xdebug not found"
-          php -r "echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL;"
-          php -r "var_dump(extension_loaded('xdebug'));"
+          echo "Checking Xdebug installation..."
+          php -m | grep -i xdebug || echo "WARNING: Xdebug not found in modules"
+          
+          if php -m | grep -qi xdebug; then
+            echo "✅ Xdebug is loaded"
+            php -r "echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL;"
+          else
+            echo "Installing Xdebug manually..."
+            sudo apt-get update
+            sudo apt-get install -y php-xdebug
+            php -m | grep -i xdebug || echo "Still not found after manual install"
+          fi
+          
           # Set Xdebug mode for coverage
           echo "XDEBUG_MODE=coverage" >> $GITHUB_ENV
+          export XDEBUG_MODE=coverage
+          
+          # Verify mode is set
+          php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
+          php -r "var_dump(extension_loaded('xdebug'));"
       
       - name: Install dependencies
         run: |
