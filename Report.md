@@ -396,6 +396,9 @@ docker-compose -f docker-compose.prod.yml up -d
 - Environment variables for configuration
 - Health endpoints for load balancer integration
 
+**Note on Platform Selection:**
+I initially intended to deploy to Azure Container Instances as suggested in class, but was unable to locate the Azure credentials that were provided. As a result, I proceeded with Google Cloud Run, which offers similar serverless container deployment capabilities and integrates well with GitHub Actions for CI/CD automation. The application architecture is platform-agnostic and can be easily adapted to Azure or other cloud platforms once the appropriate credentials are available.
+
 ### 4.3 Environment Configuration
 
 The application supports environment-based configuration:
