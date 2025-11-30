@@ -548,11 +548,6 @@ scrape_configs:
 
 This section provides evidence of the successful deployment to Google Cloud Run, including screenshots and verification of all deployment requirements.
 
-**📸 Screenshot Instructions:**
-1. Create a `screenshots/` directory in the project root
-2. Take screenshots as described in each subsection below
-3. Save them with the filenames shown in the image placeholders
-4. The screenshots will be automatically referenced in this report
 
 **Required Screenshots:**
 - `screenshots/cloud-run-dashboard.png` - Cloud Run service dashboard
@@ -564,10 +559,9 @@ This section provides evidence of the successful deployment to Google Cloud Run,
 
 **Production URL:**
 ```
-https://shortkenny-xxxxx-uc.a.run.app
+https://shortkenny-644197836082.europe-west1.run.app
 ```
 
-*Note: Replace `xxxxx` with your actual Cloud Run service identifier. You can find this in the Cloud Run dashboard or by running:*
 ```bash
 gcloud run services describe shortkenny \
   --platform managed \
@@ -639,7 +633,7 @@ Use `curl` or Postman to demonstrate successful API calls:
 
 #### Health Endpoint
 ```bash
-curl https://shortkenny-xxxxx-uc.a.run.app/health
+curl https://shortkenny-644197836082.europe-west1.run.app/health
 ```
 
 **Expected Response:**
@@ -656,7 +650,7 @@ curl https://shortkenny-xxxxx-uc.a.run.app/health
 
 #### Create Short Link
 ```bash
-curl -X POST https://shortkenny-xxxxx-uc.a.run.app/api/links \
+curl -X POST https://shortkenny-644197836082.europe-west1.run.app/api/links \
   -H "Content-Type: application/json" \
   -d '{"original_url": "https://example.com/very/long/url"}'
 ```
@@ -675,7 +669,7 @@ curl -X POST https://shortkenny-xxxxx-uc.a.run.app/api/links \
 
 #### Redirect Test
 ```bash
-curl -I https://shortkenny-xxxxx-uc.a.run.app/abc123
+curl -I https://shortkenny-644197836082.europe-west1.run.app/abc123
 ```
 
 **Expected Response:**
@@ -686,7 +680,7 @@ Location: https://example.com/very/long/url
 
 #### Metrics Endpoint
 ```bash
-curl https://shortkenny-xxxxx-uc.a.run.app/metrics
+curl https://shortkenny-644197836082.europe-west1.run.app/metrics
 ```
 
 **Expected Response:**
@@ -748,7 +742,7 @@ Code coverage: 75.23%
 Build completed successfully!
 Deploying container to Cloud Run service [shortkenny]...
 Service [shortkenny] revision [shortkenny-00003-xyz] has been deployed
-Service URL: https://shortkenny-xxxxx-uc.a.run.app
+Service URL: https://shortkenny-644197836082.europe-west1.run.app
 ```
 
 **Screenshot:**
