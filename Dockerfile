@@ -39,20 +39,23 @@ RUN chown -R www-data:www-data /var/www/html \
 RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
 # Configure Apache to listen on port 8080 (required by Cloud Run)
-RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf && \
-    sed -i 's/:80/:8080/' /etc/apache2/sites-available/000-default.conf
+# Replace port in ports.conf
+RUN sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf && \
+    sed -i 's/<VirtualHost \*:80>/<VirtualHost *:8080>/' /etc/apache2/sites-available/000-default.conf && \
+    echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Create directory for SQLite database if needed
 RUN mkdir -p /var/www/html/data && \
     chown -R www-data:www-data /var/www/html/data
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Set environment variable for Cloud Run
+ENV PORT=8080
+ENV APACHE_RUN_USER=www-data
+ENV APACHE_RUN_GROUP=www-data
 
 # Expose port 8080 (Cloud Run requirement)
 EXPOSE 8080
 
-# Start Apache
+# Start Apache (no health check - Cloud Run handles this)
 CMD ["apache2-foreground"]
 
