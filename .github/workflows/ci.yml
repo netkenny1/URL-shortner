@@ -15,19 +15,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup PHP and enable coverage
+      - name: Setup PHP with Xdebug
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_sqlite
-          coverage: pcov
-          ini-values: pcov.directory=.
+          extensions: pdo_sqlite, xdebug
+          coverage: xdebug
       
-      - name: Verify PCOV is enabled
+      - name: Verify Xdebug coverage mode
         run: |
-          php -m | grep -i pcov || echo "WARNING: PCOV not found"
-          php -r "echo 'PCOV loaded: ' . (extension_loaded('pcov') ? 'YES' : 'NO') . PHP_EOL;"
-          php -r "if (extension_loaded('pcov')) { echo 'PCOV enabled: ' . (ini_get('pcov.enabled') ? 'YES' : 'NO') . PHP_EOL; }"
+          php -v
+          php -m | grep -i xdebug || echo "WARNING: Xdebug not found"
+          php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+          php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
       
       - name: Install dependencies
         run: |
@@ -61,76 +61,45 @@ jobs:
       - name: Debug PHP & PHPUnit
         run: |
           php -v
-          php -m | grep -i pcov || true
-          php -r "echo 'PCOV loaded: ' . (extension_loaded('pcov') ? 'YES' : 'NO') . PHP_EOL;"
-          php -r "if (extension_loaded('pcov')) { echo 'PCOV enabled: ' . ini_get('pcov.enabled') . PHP_EOL; echo 'PCOV directory: ' . ini_get('pcov.directory') . PHP_EOL; }"
+          php -m | grep -i xdebug || true
+          php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+          php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
           ./vendor/bin/phpunit --version
       
       - name: Run tests with coverage
+        env:
+          XDEBUG_MODE: coverage
         run: |
-          echo "=== DEBUGGING INFO ==="
-          echo "Current directory: $(pwd)"
+          echo "=== ENVIRONMENT ==="
+          echo "XDEBUG_MODE: $XDEBUG_MODE"
+          php -r "echo 'Xdebug mode from PHP: ' . ini_get('xdebug.mode') . PHP_EOL;"
           echo ""
-          echo "Files in src directory:"
-          ls -la src/ || echo "src directory not found!"
+          echo "Files in src:"
+          ls src/
           echo ""
-          echo "PHP files in src:"
-          find src -name "*.php" -type f 2>/dev/null || echo "No PHP files in src"
-          echo ""
-          echo "PCOV configuration:"
-          php -r "echo 'PCOV loaded: ' . (extension_loaded('pcov') ? 'YES' : 'NO') . PHP_EOL;"
-          php -r "if(extension_loaded('pcov')) { print_r(ini_get_all('pcov')); }"
-          echo ""
-          echo "PHPUnit version:"
-          ./vendor/bin/phpunit --version
-          echo ""
-          echo "=== RUNNING TESTS ==="
           
-          # Run with explicit configuration
-          ./vendor/bin/phpunit \
-            --configuration phpunit.xml \
-            --coverage-text \
-            --coverage-clover coverage/clover.xml 2>&1 || true
+          echo "=== RUNNING TESTS WITH COVERAGE ==="
+          ./vendor/bin/phpunit --coverage-text --coverage-clover coverage/clover.xml
           
           echo ""
-          echo "=== CHECKING RESULTS ==="
-          echo "Files in coverage directory:"
-          ls -la coverage/ 2>&1 || echo "Coverage directory doesn't exist"
-          
-          if [ ! -f coverage/clover.xml ]; then
-            echo ""
-            echo "ERROR: Coverage file was not generated!"
-            echo ""
-            echo "Trying with pcov.enabled=1 explicitly..."
-            php -d pcov.enabled=1 -d pcov.directory=. ./vendor/bin/phpunit \
-              --configuration phpunit.xml \
-              --coverage-text \
-              --coverage-clover coverage/clover.xml 2>&1 || true
-            
-            echo ""
-            ls -la coverage/ 2>&1 || echo "Still no coverage"
-          fi
-          
-          if [ ! -f coverage/clover.xml ]; then
-            echo ""
-            echo "STILL NO COVERAGE - Trying minimal test..."
-            php -d pcov.enabled=1 -d pcov.directory=src ./vendor/bin/phpunit \
-              --configuration phpunit.xml \
-              --testsuite "Unit Tests" \
-              --coverage-text \
-              --coverage-clover coverage/clover.xml 2>&1 || true
-            ls -la coverage/ 2>&1
-          fi
+          echo "=== RESULTS ==="
+          ls -la coverage/
           
           if [ -f coverage/clover.xml ]; then
-            echo "✅ Coverage file generated successfully"
-            ls -lh coverage/clover.xml
-            echo ""
-            echo "First 30 lines of clover.xml:"
-            head -30 coverage/clover.xml
+            echo "✅ Coverage generated!"
+            head -20 coverage/clover.xml
           else
-            echo "❌ FAILED: No coverage file generated"
-            exit 1
+            echo "❌ No coverage file"
+            echo ""
+            echo "Trying with XDEBUG_MODE inline..."
+            XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-text --coverage-clover coverage/clover.xml
+            ls -la coverage/
+            
+            if [ ! -f coverage/clover.xml ]; then
+              echo "Still no coverage - checking phpunit.xml:"
+              cat phpunit.xml
+              exit 1
+            fi
           fi
       
       - name: Check coverage threshold
