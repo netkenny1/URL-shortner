@@ -51,9 +51,20 @@ jobs:
           # Ensure coverage directory exists
           mkdir -p coverage/html
           
-          # Run tests - use --coverage flag to enable coverage collection
-          # The phpunit.xml config will handle output formats
-          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html
+          # Run tests with coverage - try generating clover first, then HTML
+          echo "Running PHPUnit with coverage (clover only first)..."
+          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml 2>&1 | tail -20
+          
+          # If clover was generated, now generate HTML
+          if [ -f coverage/clover.xml ]; then
+            echo "Clover XML generated, now generating HTML coverage..."
+            ./vendor/bin/phpunit --coverage-html coverage/html 2>&1 | tail -10
+          else
+            echo "Clover not generated on first attempt, trying with both flags..."
+            ./vendor/bin/phpunit \
+              --coverage-clover coverage/clover.xml \
+              --coverage-html coverage/html
+          fi
           
           TEST_EXIT_CODE=$?
           if [ $TEST_EXIT_CODE -ne 0 ]; then
@@ -73,16 +84,25 @@ jobs:
             # Check if HTML was generated (proves coverage ran)
             if [ -d coverage/html ] && [ "$(ls -A coverage/html)" ]; then
               echo "HTML coverage was generated, but clover.xml was not"
-              echo "This suggests a configuration issue"
+              echo "This suggests PHPUnit generated coverage but clover output failed"
             fi
             
-            # Try alternative: generate clover separately
-            echo "Attempting to generate clover.xml separately..."
-            XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-clover coverage/clover.xml --no-coverage-html
+            # Try alternative: generate clover separately with absolute path
+            echo "Attempting to generate clover.xml separately with absolute path..."
+            XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-clover "$(pwd)/coverage/clover.xml"
+            
+            # If that doesn't work, try with relative path and explicit test directory
+            if [ ! -f coverage/clover.xml ]; then
+              echo "Trying with relative path and explicit test directory..."
+              XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-clover coverage/clover.xml tests/
+            fi
             
             if [ ! -f coverage/clover.xml ]; then
               echo "❌ Failed to generate clover.xml after retry"
-              echo "This might indicate an issue with source file paths or Xdebug configuration"
+              echo "Checking PHPUnit version and capabilities..."
+              ./vendor/bin/phpunit --version
+              ./vendor/bin/phpunit --help | grep -i coverage || true
+              echo "This might indicate an issue with PHPUnit clover output or file permissions"
               exit 1
             fi
           fi
