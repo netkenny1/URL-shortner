@@ -64,12 +64,15 @@ jobs:
           # Set Xdebug mode explicitly for coverage
           export XDEBUG_MODE=coverage
           
-          # PHPUnit 10: Generate all coverage reports in one command
-          # Removed report config from phpunit.xml, using CLI flags instead
+          # PHPUnit 10: Need --coverage flag to enable coverage collection
+          # Then specify output formats
+          echo "Running PHPUnit with coverage enabled..."
           ./vendor/bin/phpunit \
+            --coverage \
             --coverage-clover=coverage/clover.xml \
             --coverage-html=coverage/html \
-            --coverage-text=coverage/coverage.txt
+            --coverage-text=coverage/coverage.txt \
+            --log-junit=coverage/junit.xml
           
           echo "Checking if coverage files were generated..."
           ls -la coverage/ || echo "Coverage directory is empty"
