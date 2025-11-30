@@ -12,17 +12,5 @@
             <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
-    <coverage>
-        <include>
-            <directory suffix=".php">src</directory>
-            <file>api.php</file>
-            <file>redirect.php</file>
-            <file>lib.php</file>
-        </include>
-        <exclude>
-            <directory>tests</directory>
-            <directory>vendor</directory>
-        </exclude>
-    </coverage>
 </phpunit>
 

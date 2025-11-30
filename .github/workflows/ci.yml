@@ -66,34 +66,18 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          # PHPUnit 10: The issue might be that coverage isn't being triggered
-          # Let's try using the testdox format to see what's happening
-          echo "Testing if coverage works at all..."
+          # PHPUnit 10: Removed coverage config from phpunit.xml
+          # Using only command-line flags with explicit filter paths
+          echo "Generating coverage with explicit filter..."
+          ./vendor/bin/phpunit \
+            --coverage-clover=coverage/clover.xml \
+            --coverage-html=coverage/html \
+            --coverage-text=coverage/coverage.txt \
+            --coverage-filter=src \
+            --coverage-filter=api.php \
+            --coverage-filter=redirect.php \
+            --coverage-filter=lib.php
           
-          # First, try a simple coverage command
-          ./vendor/bin/phpunit --coverage-text 2>&1 | head -20
-          
-          # Now try generating the clover file
-          echo "Generating clover.xml..."
-          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml 2>&1
-          
-          # Check if file was created
-          if [ -f coverage/clover.xml ]; then
-            echo "✅ Clover XML generated!"
-            # Now generate other formats
-            ./vendor/bin/phpunit --coverage-html=coverage/html --coverage-text=coverage/coverage.txt 2>&1 || true
-          else
-            echo "❌ Clover XML still not generated"
-            echo "Trying with explicit paths..."
-            ./vendor/bin/phpunit \
-              --coverage-clover=coverage/clover.xml \
-              --whitelist=./src \
-              --whitelist=./api.php \
-              --whitelist=./redirect.php \
-              --whitelist=./lib.php 2>&1
-          fi
-          
-          # Debug: Check what PHPUnit actually did
           echo "PHPUnit exit code: $?"
           echo "Files in coverage directory:"
           ls -la coverage/ 2>&1 || echo "Coverage directory doesn't exist"
