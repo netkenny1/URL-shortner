@@ -19,19 +19,16 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_sqlite
-          coverage: pcov
+          extensions: pdo_sqlite, xdebug
+          coverage: xdebug
       
-      - name: Verify coverage driver is enabled
+      - name: Verify Xdebug is enabled
         run: |
-          php -m | grep -i pcov || php -m | grep -i xdebug || echo "WARNING: Coverage driver not found"
-          if php -m | grep -qi pcov; then
-            echo "✅ PCOV is loaded"
-            php -r "echo 'PCOV version: ' . phpversion('pcov') . PHP_EOL;"
-          elif php -m | grep -qi xdebug; then
-            echo "✅ Xdebug is loaded"
-            php -r "echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL;"
-          fi
+          php -m | grep -i xdebug || echo "WARNING: Xdebug not found"
+          php -r "echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL;"
+          php -r "var_dump(extension_loaded('xdebug'));"
+          # Set Xdebug mode for coverage
+          echo "XDEBUG_MODE=coverage" >> $GITHUB_ENV
       
       - name: Install dependencies
         run: |
@@ -66,14 +63,8 @@ jobs:
           fi
           
           echo "Running tests with coverage..."
-          echo "Running tests with coverage..."
-          # PCOV is loaded, but files aren't generating
-          # Try explicit coverage-text to force output to console first
-          ./vendor/bin/phpunit --coverage-text
-          
-          # Check if that worked (it should show coverage percentage)
-          echo "Generating XML report explicitly..."
-          ./vendor/bin/phpunit --coverage-clover coverage/clover.xml
+          # Use equals sign for coverage-clover as suggested
+          ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --coverage-html=coverage/html --coverage-text=coverage/coverage.txt
           
           EXIT_CODE=$?
           echo "PHPUnit exit code: $EXIT_CODE"
@@ -86,31 +77,16 @@ jobs:
           echo "Files in coverage directory:"
           ls -la coverage/ 2>&1 || echo "Coverage directory doesn't exist"
           
-          echo "Checking if coverage files were generated..."
-          ls -la coverage/ || echo "Coverage directory is empty"
-          
           if [ ! -f coverage/clover.xml ]; then
             echo "ERROR: Coverage file was not generated!"
-            echo "Checking PHPUnit version and coverage support..."
-            ./vendor/bin/phpunit --version
-            if php -m | grep -qi pcov; then
-              php -r "echo 'PCOV loaded: YES, version: ' . phpversion('pcov') . PHP_EOL;"
-            elif php -m | grep -qi xdebug; then
-              php -r "echo 'Xdebug loaded: YES, version: ' . phpversion('xdebug') . PHP_EOL;"
-            else
-              echo "No coverage driver loaded!"
-            fi
-            
-            echo "Attempting to generate coverage with debug output..."
-            ./vendor/bin/phpunit --coverage-clover=coverage/clover.xml --debug 2>&1 | head -50
-            
-            echo "Attempting to run tests without coverage to verify tests pass..."
-            ./vendor/bin/phpunit
+            echo "Checking Xdebug status..."
+            php -r "echo 'Xdebug loaded: ' . (extension_loaded('xdebug') ? 'YES' : 'NO') . PHP_EOL;"
+            php -r "if (extension_loaded('xdebug')) { echo 'Xdebug version: ' . phpversion('xdebug') . PHP_EOL; }"
+            php -r "echo 'Xdebug mode: ' . ini_get('xdebug.mode') . PHP_EOL;"
             exit 1
           fi
           
           echo "✅ Coverage file generated successfully"
-          echo "Coverage file size: $(stat -f%z coverage/clover.xml 2>/dev/null || stat -c%s coverage/clover.xml 2>/dev/null || echo 'unknown') bytes"
       
       - name: Check coverage threshold
         run: |
